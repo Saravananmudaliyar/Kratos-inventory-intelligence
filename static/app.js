@@ -101,6 +101,7 @@ async function fetchAppState() {
         renderTransferLogs();
         renderCompatibilitySection();
         renderDeliveries();
+        renderWarehousePlans();
         renderDelayAnalysis();
         renderPresets();
         renderDecisionHistory();
@@ -111,6 +112,165 @@ async function fetchAppState() {
         console.error("Error loading application state:", err);
         showToast("Error communicating with decision engine: " + err.message, "error");
     }
+}
+
+// Render Trajectory Chart using Chart.js with DD/MM/YYYY dates
+function renderTrajectoryChart(whId) {
+    const wh = (AppState.data.warehouses || []).find(w => w.wh_id === whId) || (AppState.data.warehouses && AppState.data.warehouses[0]);
+    if (!wh) return;
+
+    document.getElementById("whDetailTitle").textContent = `${wh.name} — 7-Day Forecast Stock Trajectory`;
+    document.getElementById("whDetailSub").textContent = `Monitored SKUs, dynamic customer reservation drawdowns, and supplier arrival points for ${wh.location}`;
+
+    // Get products for this warehouse
+    const products = (AppState.data.products || []).filter(p => p.wh_id === whId);
+    
+    // Update Products Table in warehouse detail
+    const tbody = document.querySelector("#whProductsTable tbody");
+    tbody.innerHTML = "";
+    products.forEach(p => {
+        const row = document.createElement("tr");
+        const statusBadge = p.status === "CRITICAL" ? '<span class="badge badge-critical">Critical</span>' :
+                            p.status === "HIGH" ? '<span class="badge badge-warning">High Risk</span>' :
+                            p.status === "MEDIUM" ? '<span class="badge badge-warning">Buffer Breached</span>' :
+                            '<span class="badge badge-success">Healthy</span>';
+        
+        const inboundBadge = (p.inbound_units && p.inbound_units > 0) ?
+            `<strong class="text-success">+${p.inbound_units} units</strong> <small class="text-muted">(${p.inbound_arrival_date})</small>` :
+            `<span class="text-muted">-</span>`;
+
+        row.innerHTML = `
+            <td><strong>${p.product_name}</strong></td>
+            <td class="mono">${p.sku_id}</td>
+            <td>${p.physical_stock}</td>
+            <td class="text-muted">${p.reserved_stock}</td>
+            <td><strong class="text-primary">${p.available_stock}</strong></td>
+            <td>${inboundBadge}</td>
+            <td>${p.safety_buffer}</td>
+            <td>${p.daily_demand}/day</td>
+            <td><strong>${p.projected_stock || p.available_stock} units</strong></td>
+            <td>${statusBadge}</td>
+        `;
+        tbody.appendChild(row);
+    });
+
+    // Generate 7-Day Forecast Chart Data with exact DD/MM/YYYY dates
+    const days = [0, 1, 2, 3, 4, 5, 6, 7].map(d => d === 0 ? `${getFormattedDate(0)} (Today)` : getFormattedDate(d));
+    const datasets = products.slice(0, 4).map((p, idx) => {
+        const colors = ["#2563eb", "#dc2626", "#059669", "#d97706"];
+        const dataPoints = [];
+        let cur = p.available_stock;
+        for (let d = 0; d <= 7; d++) {
+            dataPoints.push(Math.max(0, Math.round(cur)));
+            cur -= p.daily_demand;
+        }
+        return {
+            label: p.product_name,
+            data: dataPoints,
+            borderColor: colors[idx % colors.length],
+            backgroundColor: colors[idx % colors.length] + "15",
+            borderWidth: 2,
+            tension: 0.25,
+            fill: false
+        };
+    });
+
+    const chartCanvas = document.getElementById("whTrajectoryChart");
+    if (!chartCanvas) return;
+    const ctx = chartCanvas.getContext("2d");
+    if (AppState.chartInstance) {
+        AppState.chartInstance.destroy();
+    }
+    AppState.chartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: days,
+            datasets: datasets
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'top',
+                    labels: {
+                        font: { family: 'Plus Jakarta Sans', size: 12, weight: 600 },
+                        boxWidth: 14
+                    }
+                },
+                tooltip: {
+                    padding: 10,
+                    bodyFont: { family: 'Plus Jakarta Sans' }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    title: { display: true, text: 'Available Units (ATP)' },
+                    grid: { color: '#f1f5f9' }
+                },
+                x: {
+                    grid: { color: '#f8fafc' }
+                }
+            }
+        }
+    });
+}
+
+// Product Catalog & Filter Controls
+function initFilters() {
+    const search = document.getElementById("prodSearchInput");
+    const whFilter = document.getElementById("prodWarehouseFilter");
+    const stFilter = document.getElementById("prodStatusFilter");
+
+    const onFilterChange = () => renderCatalogTable();
+    if (search) search.addEventListener("input", onFilterChange);
+    if (whFilter) whFilter.addEventListener("change", onFilterChange);
+    if (stFilter) stFilter.addEventListener("change", onFilterChange);
+}
+
+function renderCatalogTable() {
+    const tbody = document.querySelector("#catalogTable tbody");
+    if (!tbody || !AppState.data) return;
+    tbody.innerHTML = "";
+
+    const search = (document.getElementById("prodSearchInput")?.value || "").toLowerCase();
+    const whFilter = document.getElementById("prodWarehouseFilter")?.value || "ALL";
+    const stFilter = document.getElementById("prodStatusFilter")?.value || "ALL";
+
+    const filtered = (AppState.data.products || []).filter(p => {
+        const matchesSearch = p.product_name.toLowerCase().includes(search) || p.sku_id.toLowerCase().includes(search);
+        const matchesWh = whFilter === "ALL" || p.wh_id === whFilter;
+        const matchesSt = stFilter === "ALL" || p.status === stFilter;
+        return matchesSearch && matchesWh && matchesSt;
+    });
+
+    filtered.forEach(p => {
+        const row = document.createElement("tr");
+        const statusBadge = p.status === "CRITICAL" ? '<span class="badge badge-critical">Critical Shortage</span>' :
+                            p.status === "HIGH" ? '<span class="badge badge-warning">High Risk</span>' :
+                            p.status === "MEDIUM" ? '<span class="badge badge-warning">Medium Risk</span>' :
+                            '<span class="badge badge-success">Nominal</span>';
+
+        const inboundBadge = (p.inbound_units && p.inbound_units > 0) ?
+            `<strong class="text-success">+${p.inbound_units} units</strong>` :
+            `<span class="text-muted">-</span>`;
+
+        row.innerHTML = `
+            <td><strong>${p.wh_name}</strong></td>
+            <td>${p.product_name}</td>
+            <td class="mono">${p.sku_id}</td>
+            <td>${p.physical_stock}</td>
+            <td class="text-muted">${p.reserved_stock}</td>
+            <td><strong class="text-primary">${p.available_stock}</strong></td>
+            <td>${inboundBadge}</td>
+            <td>${p.safety_buffer}</td>
+            <td>${p.daily_demand}/day</td>
+            <td><strong>${p.projected_stock || p.available_stock} units</strong></td>
+            <td>${statusBadge}</td>
+        `;
+        tbody.appendChild(row);
+    });
 }
 
 // Render Executive KPIs Banner
@@ -637,6 +797,12 @@ function initTransferForm() {
             }
 
             try {
+                // Trigger Route Animation Glow
+                const routeLine = document.getElementById("activeRouteLine");
+                const cargoDot = document.getElementById("movingCargoDot");
+                if (routeLine) routeLine.classList.add("animating-transfer");
+                if (cargoDot) cargoDot.classList.add("animating-transfer");
+
                 const res = await fetch("/api/transfer/confirm", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
@@ -644,8 +810,22 @@ function initTransferForm() {
                 });
                 const result = await res.json();
                 if (result.success) {
-                    showToast(`Transfer confirmed! Manifest #${result.manifest_id} registered.`, "success");
+                    showToast(`🚀 Transfer confirmed! ${qty} units dispatched. Stockout mitigated!`, "success");
                     await fetchAppState();
+
+                    // Apply smooth success ripple animation to destination warehouse card & detail card
+                    setTimeout(() => {
+                        const whCards = document.querySelectorAll(".warehouse-card");
+                        whCards.forEach(c => c.classList.add("transfer-success-pulse"));
+                        const detailCard = document.getElementById("warehouseDetailCard");
+                        if (detailCard) detailCard.classList.add("transfer-success-pulse");
+                        setTimeout(() => {
+                            whCards.forEach(c => c.classList.remove("transfer-success-pulse"));
+                            if (detailCard) detailCard.classList.remove("transfer-success-pulse");
+                            if (routeLine) routeLine.classList.remove("animating-transfer");
+                            if (cargoDot) cargoDot.classList.remove("animating-transfer");
+                        }, 2500);
+                    }, 100);
                 } else {
                     showToast(`Transfer failed: ${result.error}`, "error");
                 }
@@ -671,13 +851,16 @@ function renderTransferLogs() {
         const row = document.createElement("tr");
         row.innerHTML = `
             <td class="mono"><strong>#${log.id}</strong></td>
-            <td>${log.source}</td>
-            <td>${log.dest}</td>
+            <td><strong>${log.source}</strong></td>
+            <td><strong>${log.dest}</strong></td>
             <td>${log.product}</td>
-            <td><strong>${log.quantity} units</strong></td>
+            <td><strong class="text-primary">${log.quantity} units</strong></td>
             <td>₹${log.freight_cost.toFixed(2)}</td>
-            <td>${log.expected_arrival}</td>
-            <td><span class="badge badge-info">${log.status}</span></td>
+            <td>
+                <strong>${log.expected_arrival}</strong>
+                <div class="transfer-progress-track"><div class="transfer-progress-bar"></div></div>
+            </td>
+            <td><span class="badge badge-success"><i class="fa-solid fa-truck-fast"></i> ${log.status}</span></td>
             <td class="text-muted">${log.timestamp}</td>
         `;
         tbody.appendChild(row);
@@ -750,13 +933,88 @@ function renderDeliveries() {
             <td>${d.supplier}</td>
             <td>${d.product_name}</td>
             <td><strong>${d.dest_wh_name}</strong></td>
-            <td>${d.quantity} units</td>
+            <td><strong>${d.quantity} units</strong></td>
             <td>${d.expected_arrival}</td>
             <td class="${d.delay_days > 0 ? 'text-critical' : 'text-muted'}">${d.delay_days > 0 ? `+${d.delay_days} days` : '0 days'}</td>
             <td><strong>${d.actual_projected_arrival}</strong></td>
             <td>${statusBadge}</td>
         `;
         tbody.appendChild(row);
+    });
+}
+
+// 4-Warehouse Forward Stock Replenishment Plan Cards
+function renderWarehousePlans() {
+    const grid = document.getElementById("warehousePlansGrid");
+    if (!grid || !AppState.data) return;
+    grid.innerHTML = "";
+
+    const plans = AppState.data.warehouse_plans || [];
+    plans.forEach(p => {
+        const card = document.createElement("div");
+        card.className = "plan-card";
+
+        const badgeClass = p.plan_status.includes("CRITICAL") ? "badge-critical" :
+                            p.plan_status.includes("RECOVERY") ? "badge-success" :
+                            p.plan_status.includes("SURPLUS") ? "badge-healthy" : "badge-warning";
+
+        let deliveriesHtml = "";
+        if (p.scheduled_deliveries && p.scheduled_deliveries.length > 0) {
+            deliveriesHtml = p.scheduled_deliveries.map(d => `
+                <div class="plan-delivery-item">
+                    <div>
+                        <strong>${d.product_name}</strong>: <span class="text-success font-bold">+${d.quantity} units</span><br>
+                        <small class="text-muted"><i class="fa-solid fa-truck"></i> ${d.supplier}</small>
+                    </div>
+                    <div style="text-align:right;">
+                        <span class="badge ${d.delay_days > 0 ? 'badge-warning' : 'badge-success'}">${d.actual_projected_arrival}</span>
+                    </div>
+                </div>
+            `).join("");
+        } else {
+            deliveriesHtml = `<div class="text-muted" style="font-size:0.75rem; padding: 4px 0;"><i class="fa-solid fa-check"></i> Stock buffer stable. Managed from internal inventory.</div>`;
+        }
+
+        card.innerHTML = `
+            <div>
+                <div class="plan-card-header">
+                    <div>
+                        <div class="plan-wh-name"><i class="fa-solid fa-warehouse"></i> ${p.name}</div>
+                        <div class="plan-wh-sub"><i class="fa-solid fa-location-dot"></i> ${p.location} • Stock Coverage: <strong>${p.coverage_days} days</strong></div>
+                    </div>
+                    <span class="badge ${badgeClass}">${p.plan_status}</span>
+                </div>
+
+                <div class="plan-metrics-box">
+                    <div>
+                        <div class="plan-metric-num text-primary">${p.current_available}</div>
+                        <div class="plan-metric-lbl">Available ATP</div>
+                    </div>
+                    <div>
+                        <div class="plan-metric-num text-success">+${p.inbound_units}</div>
+                        <div class="plan-metric-lbl">Inbound Inflow</div>
+                    </div>
+                    <div>
+                        <div class="plan-metric-num text-warning">-${p.planned_7day_demand}</div>
+                        <div class="plan-metric-lbl">7-Day Outflow</div>
+                    </div>
+                    <div>
+                        <div class="plan-metric-num">${p.projected_closing}</div>
+                        <div class="plan-metric-lbl">Projected End</div>
+                    </div>
+                </div>
+
+                <div class="plan-deliveries-list">
+                    <div class="plan-deliveries-title"><i class="fa-solid fa-truck-fast"></i> Scheduled Inflow Pipeline</div>
+                    ${deliveriesHtml}
+                </div>
+            </div>
+
+            <div class="plan-action-box">
+                <strong><i class="fa-solid fa-clipboard-check"></i> Replenishment Strategy:</strong> ${p.action_plan}
+            </div>
+        `;
+        grid.appendChild(card);
     });
 }
 

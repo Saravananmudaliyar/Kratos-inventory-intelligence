@@ -111,12 +111,13 @@
                                 <tr>
                                     <th>Product Name</th>
                                     <th>SKU</th>
-                                    <th>On-Hand</th>
+                                    <th>Physical Stock</th>
                                     <th>Reserved</th>
                                     <th>Available (ATP)</th>
+                                    <th>Inbound Planned</th>
                                     <th>Safety Buffer</th>
                                     <th>Daily Demand</th>
-                                    <th>Est. Stockout</th>
+                                    <th>7-Day Projected Stock</th>
                                     <th>Status</th>
                                 </tr>
                             </thead>
@@ -163,9 +164,10 @@
                                 <th>Physical Stock</th>
                                 <th>Reserved</th>
                                 <th>Available Stock</th>
+                                <th>Inbound Planned</th>
                                 <th>Safety Buffer</th>
                                 <th>Daily Demand</th>
-                                <th>Forecast Stockout</th>
+                                <th>7-Day Projected</th>
                                 <th>Risk Tier</th>
                             </tr>
                         </thead>
@@ -363,9 +365,22 @@
             </div>
         </section>
 
-        <!-- PAGE 4: SUPPLIER DELIVERIES -->
+        <!-- PAGE 4: SUPPLIER DELIVERIES & 4-WAREHOUSE REPLENISHMENT PLAN -->
         <section class="page-view" id="view-deliveries">
+            <!-- 4-Warehouse Forward Stock Replenishment Plan -->
             <div class="content-card">
+                <div class="card-header">
+                    <div>
+                        <h3 class="card-title"><i class="fa-solid fa-calendar-check"></i> 4-Warehouse Stock Management & Delivery Plan</h3>
+                        <div class="card-subtitle">Forward-looking inventory replenishment planned across expected vendor deliveries and inter-hub transfers</div>
+                    </div>
+                </div>
+                <div class="warehouse-plans-grid" id="warehousePlansGrid">
+                    <!-- Injected Dynamically for Mumbai, Pune, Chennai, Delhi -->
+                </div>
+            </div>
+
+            <div class="content-card" style="margin-top: 1.5rem;">
                 <div class="card-header">
                     <div>
                         <h3 class="card-title"><i class="fa-solid fa-truck-plane"></i> Inbound Supplier Deliveries & Purchase Orders</h3>
@@ -377,7 +392,7 @@
                         <thead>
                             <tr>
                                 <th>Shipment ID</th>
-                                <th>Supplier</th>
+                                <th>Supplier / Source</th>
                                 <th>Product</th>
                                 <th>Destination</th>
                                 <th>Quantity</th>

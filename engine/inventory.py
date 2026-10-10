@@ -211,8 +211,18 @@ def get_incoming_shipments(scenario: dict, sku_id: str, warehouse_id: Optional[s
     """Get incoming shipments for a given SKU, optionally filtered by warehouse."""
     shipments = []
     for s in scenario.get("incoming_shipments", []):
-        if s["sku_id"] == sku_id:
-            if warehouse_id is None or s["warehouse_id"] == warehouse_id:
-                actual_arrival = s["expected_arrival_day"] + s.get("delay_days", 0)
-                shipments.append({**s, "actual_arrival_day": actual_arrival})
+        if s.get("sku_id") == sku_id:
+            s_wh = s.get("warehouse_id") or s.get("destination_warehouse_id")
+            if warehouse_id is None or s_wh == warehouse_id:
+                exp = s.get("expected_arrival_day", 1)
+                delay = s.get("delay_days", s.get("supplier_delay_days", 0))
+                actual_arrival = exp + delay
+                shipments.append({
+                    **s,
+                    "warehouse_id": s_wh,
+                    "destination_warehouse_id": s_wh,
+                    "expected_arrival_day": exp,
+                    "delay_days": delay,
+                    "actual_arrival_day": actual_arrival
+                })
     return shipments

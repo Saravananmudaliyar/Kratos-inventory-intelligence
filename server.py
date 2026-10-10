@@ -6,7 +6,8 @@ Serves REST endpoints for:
 - Shortage radar & 7-day projections with exact DD/MM/YYYY calendar dates
 - Cross-warehouse product matrix
 - Safe transfer evaluation with strict source future stock protection
-- Confirmed transfer execution & lifecycle logging
+- Real-time stock transfer execution updating physical ledger and inbound pipeline
+- 4-Warehouse Forward-Looking Replenishment & Delivery Planning Engine
 - Component compatibility engine
 - Supply disruption simulations & one-click presets
 - Decision history audit & CSV export
@@ -89,19 +90,7 @@ def day_to_date_str(day_offset: Optional[int]) -> str:
 BASE_SCENARIO = load_scenario()
 CURRENT_SCENARIO = deep_copy_scenario(BASE_SCENARIO)
 AUDIT_TRAIL = AuditTrail()
-CONFIRMED_TRANSFERS: List[Dict[str, Any]] = [
-    {
-        "id": "TRF-001",
-        "source": "Mumbai Warehouse",
-        "dest": "Pune Warehouse",
-        "product": "65W USB-C Fast Charger",
-        "quantity": 25,
-        "freight_cost": 475.0,
-        "expected_arrival": f"{day_to_date_str(1)} (12 hrs)",
-        "status": "In-Transit",
-        "timestamp": "10/10/2026 09:30:00",
-    }
-]
+CONFIRMED_TRANSFERS: List[Dict[str, Any]] = []
 SIM_PARAMS = {
     "demand_multiplier": 1.0,
     "delay_additional_days": 0,
@@ -112,7 +101,7 @@ ACTIVE_SCENARIO_KEY = "normal"
 
 
 def build_full_state():
-    """Build unified, rich payload for frontend consumption with exact DD/MM/YYYY dates."""
+    """Build unified, rich payload for frontend consumption with exact DD/MM/YYYY dates and 4-warehouse delivery plans."""
     sim = run_simulation(
         CURRENT_SCENARIO,
         demand_multiplier=SIM_PARAMS["demand_multiplier"],
@@ -139,8 +128,9 @@ def build_full_state():
         at_risk = len([r for r in wh_radar if r["risk_level"] in ("CRITICAL", "HIGH", "MEDIUM")])
         critical_count = len([r for r in wh_radar if r["risk_level"] == "CRITICAL"])
         
-        # Inbound shipments count
-        inbound = [s for s in CURRENT_SCENARIO.get("incoming_shipments", []) if s.get("destination_warehouse_id") == wh_id]
+        # Inbound shipments count (including transfers)
+        inbound = [s for s in CURRENT_SCENARIO.get("incoming_shipments", []) if (s.get("warehouse_id") == wh_id or s.get("destination_warehouse_id") == wh_id)]
+        total_inbound_units = sum(s.get("quantity", 0) for s in inbound)
         
         # Earliest stockout date in DD/MM/YYYY
         stockouts = [r["days_to_stockout"] for r in wh_radar if r["days_to_stockout"] is not None]
@@ -157,6 +147,7 @@ def build_full_state():
             "available_units": total_avail,
             "physical_units": total_phys,
             "reserved_units": total_res,
+            "inbound_units": total_inbound_units,
             "at_risk_count": at_risk,
             "critical_count": critical_count,
             "incoming_deliveries": len(inbound),
@@ -164,11 +155,20 @@ def build_full_state():
             "status": status,
         })
 
-    # 2. Enrich Products Catalog with DD/MM/YYYY Stockout Dates
+    # 2. Enrich Products Catalog with Inbound Deliveries & Projected Balances
     products_list = []
     for r in radar:
         wh_info = wh_map.get(r["warehouse_id"], {})
         stockout_str = day_to_date_str(r.get('days_to_stockout')) if r.get("days_to_stockout") is not None else "Safe"
+        
+        # Inbound for this specific SKU & warehouse
+        sku_inbound = get_incoming_shipments(CURRENT_SCENARIO, r["sku_id"], r["warehouse_id"])
+        inbound_qty = sum(s.get("quantity", 0) for s in sku_inbound)
+        earliest_inbound = day_to_date_str(min([s["actual_arrival_day"] for s in sku_inbound])) if sku_inbound else "-"
+        
+        # Final projected closing stock on Day 7
+        proj_7day = r["projection"][-1]["physical_closing_stock"] if r.get("projection") else r["available"]
+
         products_list.append({
             "wh_id": r["warehouse_id"],
             "wh_name": wh_info.get("name", r["warehouse_id"]),
@@ -178,6 +178,9 @@ def build_full_state():
             "physical_stock": r["on_hand"],
             "reserved_stock": r["reserved"],
             "available_stock": r["available"],
+            "inbound_units": inbound_qty,
+            "inbound_arrival_date": earliest_inbound,
+            "projected_stock": proj_7day,
             "safety_buffer": r["safety_stock"],
             "daily_demand": r["avg_daily_demand"],
             "forecast_stockout_date": stockout_str,
@@ -186,7 +189,7 @@ def build_full_state():
             "transfer_cost_per_unit": wh_info.get("transfer_cost_per_unit", 12.0),
         })
 
-    # 3. Early Warning Banner with exact calendar date
+    # 3. Early Warning Banner with exact calendar date & mitigation feedback
     critical_items = [r for r in radar if r["risk_level"] == "CRITICAL"]
     if critical_items:
         first = critical_items[0]
@@ -194,6 +197,12 @@ def build_full_state():
         early_warn = {
             "type": "critical",
             "text": f"<strong>Early Shortage Warning:</strong> Projecting stockout for <strong>{first['sku_name']}</strong> at <strong>{first['warehouse_name']}</strong> on <strong>{stockout_date}</strong>. Immediate warehouse transfer or compatible substitution recommended."
+        }
+    elif len(CONFIRMED_TRANSFERS) > 0:
+        latest = CONFIRMED_TRANSFERS[0]
+        early_warn = {
+            "type": "success",
+            "text": f"<strong>✅ Shortage Successfully Mitigated:</strong> Dispatched <strong>{latest['quantity']} units</strong> of <strong>{latest['product']}</strong> from {latest['source']} to {latest['dest']} (Expected Arrival: <strong>{latest['expected_arrival']}</strong>). Both source & destination inventory balances recalculated."
         }
     else:
         warning_items = [r for r in radar if r["risk_level"] in ("HIGH", "MEDIUM")]
@@ -212,30 +221,77 @@ def build_full_state():
     # 4. Inbound Deliveries with DD/MM/YYYY Arrival Dates
     deliveries_list = []
     for s in CURRENT_SCENARIO.get("incoming_shipments", []):
-        dest_wh = wh_map.get(s.get("destination_warehouse_id"), {})
+        dest_id = s.get("warehouse_id") or s.get("destination_warehouse_id")
+        dest_wh = wh_map.get(dest_id, {})
         sku = sku_map.get(s.get("sku_id"), {})
         exp_day = s.get("expected_arrival_day", 1)
-        delay = s.get("supplier_delay_days", 0) + SIM_PARAMS["delay_additional_days"]
+        delay = s.get("delay_days", s.get("supplier_delay_days", 0)) + SIM_PARAMS["delay_additional_days"]
         act_day = exp_day + delay
         deliveries_list.append({
             "shipment_id": s.get("shipment_id", ""),
             "supplier": s.get("supplier", "Tier-1 Electronics OEM"),
             "product_name": sku.get("name", s.get("sku_id")),
-            "dest_wh_name": dest_wh.get("name", s.get("destination_warehouse_id")),
+            "dest_wh_name": dest_wh.get("name", dest_id),
             "quantity": s.get("quantity", 0),
             "expected_arrival": day_to_date_str(exp_day),
             "delay_days": delay,
             "actual_projected_arrival": day_to_date_str(act_day),
+            "status": "In-Transit (Dispatched)" if "TRF" in s.get("shipment_id", "") else ("Delayed" if delay > 0 else "On Schedule")
         })
 
-    # 5. Delay Root-Cause Analysis
+    # 5. Dedicated 4-Warehouse Forward Stock Replenishment & Delivery Plans
+    warehouse_plans = []
+    for wh_id, wh_info in wh_map.items():
+        wh_radar = [r for r in radar if r["warehouse_id"] == wh_id]
+        wh_inbound = [s for s in deliveries_list if s["dest_wh_name"] == wh_info.get("name", wh_id)]
+        
+        cur_avail = sum(r["available"] for r in wh_radar)
+        inbound_units = sum(s["quantity"] for s in wh_inbound)
+        planned_7day_demand = sum(r["avg_daily_demand"] * 7 for r in wh_radar)
+        projected_closing = max(0, round(cur_avail + inbound_units - planned_7day_demand, 1))
+        
+        # Coverage days
+        daily_burn = sum(r["avg_daily_demand"] for r in wh_radar)
+        coverage_days = round((cur_avail + inbound_units) / daily_burn, 1) if daily_burn > 0 else 30.0
+        
+        crit_count = len([r for r in wh_radar if r["risk_level"] == "CRITICAL"])
+        has_transfers = any("Transfer" in s["supplier"] for s in wh_inbound)
+        
+        if crit_count > 0:
+            plan_status = "CRITICAL SHORTAGE"
+            action_plan = f"Expedite inter-warehouse transfer or initiate urgent compatible substitution."
+        elif has_transfers:
+            plan_status = "RECOVERY EN ROUTE"
+            action_plan = f"Inter-hub transfer en route. Stock coverage restored to {coverage_days} days."
+        elif cur_avail > planned_7day_demand:
+            plan_status = "SURPLUS OPTIMAL"
+            action_plan = f"Healthy stock buffer. Capable of supporting deficit regional hubs."
+        else:
+            plan_status = "BUFFER MONITORED"
+            action_plan = f"Scheduled vendor replenishment arrives on track to maintain minimum safety buffers."
+
+        warehouse_plans.append({
+            "wh_id": wh_id,
+            "name": wh_info.get("name", wh_id),
+            "location": wh_info.get("location", ""),
+            "current_available": cur_avail,
+            "inbound_units": inbound_units,
+            "planned_7day_demand": round(planned_7day_demand, 1),
+            "projected_closing": projected_closing,
+            "coverage_days": coverage_days,
+            "plan_status": plan_status,
+            "action_plan": action_plan,
+            "scheduled_deliveries": wh_inbound,
+        })
+
+    # 6. Delay Root-Cause Analysis
     delayed_count = len([d for d in deliveries_list if d["delay_days"] > 0])
     if delayed_count > 0:
         delay_analysis = f"<strong>Port & Customs Congestion Impact:</strong> {delayed_count} inbound shipment(s) currently delayed by up to {max(d['delay_days'] for d in deliveries_list)} days. Pune Hub facing component depletion for USB-C Fast Chargers due to OEM shipment #SHP-001 delay."
     else:
         delay_analysis = "All inbound logistics routes and purchase order deliveries are tracking on schedule."
 
-    # 6. Presets
+    # 7. Presets
     presets_data = [
         {"id": "supplier_delay", "title": "Supplier Port Delay (+5 Days)", "description": "Simulates customs bottleneck delaying key OEM shipments to Pune and Chennai."},
         {"id": "demand_surge", "title": "Festival Demand Surge (+80%)", "description": "Tests network resilience under intense retail festive shopping spike."},
@@ -243,7 +299,7 @@ def build_full_state():
         {"id": "compound_crisis", "title": "Compound Disruption Shock", "description": "Simultaneous 50% demand surge combined with 4-day supplier delay."},
     ]
 
-    # 7. Pre-computed Technical Compatibility Mapping
+    # 8. Pre-computed Technical Compatibility Mapping
     compatibility_data = {}
     for sku_id in sku_map.keys():
         eval_subs = evaluate_all_substitutes(CURRENT_SCENARIO, sku_id, required_qty=20)
@@ -263,7 +319,7 @@ def build_full_state():
             })
         compatibility_data[sku_id] = {"approved": appr, "rejected": rej}
 
-    # 8. Decision History Format
+    # 9. Decision History Format
     decision_history = []
     for d in sim["decisions"]:
         best = d.get("recommended_strategy", {})
@@ -283,6 +339,7 @@ def build_full_state():
         "warehouses": warehouses_list,
         "products": products_list,
         "deliveries": deliveries_list,
+        "warehouse_plans": warehouse_plans,
         "delay_analysis": delay_analysis,
         "transfer_logs": CONFIRMED_TRANSFERS,
         "presets": presets_data,
@@ -350,8 +407,9 @@ def load_preset(payload: Dict[str, Any] = Body(...)):
 @app.post("/api/scenario/reset")
 def reset_scenario():
     """Reset to baseline scenario without accumulated changes."""
-    global CURRENT_SCENARIO, SIM_PARAMS, ACTIVE_SCENARIO_KEY
+    global CURRENT_SCENARIO, SIM_PARAMS, ACTIVE_SCENARIO_KEY, CONFIRMED_TRANSFERS
     CURRENT_SCENARIO = deep_copy_scenario(BASE_SCENARIO)
+    CONFIRMED_TRANSFERS = []
     SIM_PARAMS = {
         "demand_multiplier": 1.0,
         "delay_additional_days": 0,
@@ -415,9 +473,35 @@ def evaluate_transfer(payload: Dict[str, Any] = Body(...)):
 
 @app.post("/api/transfer/confirm")
 def confirm_transfer(payload: Dict[str, Any] = Body(...)):
-    """Confirm an operational transfer and update transfer manifests."""
-    global CONFIRMED_TRANSFERS
+    """Confirm an operational transfer, deduct source inventory, and add inbound pipeline shipment to destination."""
+    global CONFIRMED_TRANSFERS, CURRENT_SCENARIO
+    source_wh = payload.get("source_wh") or payload.get("source_wh_id")
+    dest_wh = payload.get("dest_wh") or payload.get("dest_wh_id")
+    sku_id = payload.get("sku_id")
+    qty = int(payload.get("quantity", 20))
+    
     eval_res = evaluate_transfer(payload)
+    
+    # 1. Deduct stock from source warehouse inventory
+    if source_wh in CURRENT_SCENARIO.get("inventory", {}) and sku_id in CURRENT_SCENARIO["inventory"][source_wh]:
+        CURRENT_SCENARIO["inventory"][source_wh][sku_id]["on_hand"] = max(
+            0, CURRENT_SCENARIO["inventory"][source_wh][sku_id]["on_hand"] - qty
+        )
+    
+    # 2. Add inbound replenishment to destination warehouse pipeline
+    CURRENT_SCENARIO.setdefault("incoming_shipments", []).append({
+        "shipment_id": f"TRF-INBOUND-{len(CONFIRMED_TRANSFERS)+1:03d}",
+        "sku_id": sku_id,
+        "warehouse_id": dest_wh,
+        "destination_warehouse_id": dest_wh,
+        "supplier": f"Inter-Warehouse Transfer ({eval_res['source_warehouse']})",
+        "quantity": qty,
+        "expected_arrival_day": eval_res["transit_days"],
+        "delay_days": 0,
+        "supplier_delay_days": 0,
+        "actual_arrival_day": eval_res["transit_days"],
+        "status": "in_transit",
+    })
     
     manifest_id = f"TRF-{len(CONFIRMED_TRANSFERS) + 1:03d}"
     record = {
@@ -425,7 +509,7 @@ def confirm_transfer(payload: Dict[str, Any] = Body(...)):
         "source": eval_res["source_warehouse"],
         "dest": eval_res["dest_warehouse"],
         "product": eval_res["sku_name"],
-        "quantity": int(payload.get("quantity", 20)),
+        "quantity": qty,
         "freight_cost": eval_res["freight_cost"],
         "expected_arrival": f"{eval_res['expected_arrival_date']} ({eval_res['transit_days']*24} hrs)",
         "status": "Dispatched (In-Transit)",
