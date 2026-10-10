@@ -3,7 +3,7 @@ server.py — FastAPI Backend powering the StockShield AI Web Application.
 
 Serves REST endpoints for:
 - Full network state, KPIs & 2x2 regional warehouse aggregations
-- Shortage radar & 7-day projections
+- Shortage radar & 7-day projections with exact DD/MM/YYYY calendar dates
 - Cross-warehouse product matrix
 - Safe transfer evaluation with strict source future stock protection
 - Confirmed transfer execution & lifecycle logging
@@ -16,7 +16,7 @@ Serves REST endpoints for:
 import os
 from pathlib import Path
 from typing import Dict, Any, List, Optional
-from datetime import datetime
+from datetime import datetime, timedelta
 import json
 
 from fastapi import FastAPI, Query, Body, HTTPException
@@ -74,6 +74,17 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Base timeline date: October 10, 2026 (Today)
+BASE_SIM_DATE = datetime(2026, 10, 10)
+
+def day_to_date_str(day_offset: Optional[int]) -> str:
+    """Convert integer day offset (1, 2, ...) to DD/MM/YYYY format."""
+    if day_offset is None:
+        return "None (Safe)"
+    target_date = BASE_SIM_DATE + timedelta(days=day_offset)
+    return target_date.strftime("%d/%m/%Y")
+
+
 # Global In-Memory State
 BASE_SCENARIO = load_scenario()
 CURRENT_SCENARIO = deep_copy_scenario(BASE_SCENARIO)
@@ -86,9 +97,9 @@ CONFIRMED_TRANSFERS: List[Dict[str, Any]] = [
         "product": "65W USB-C Fast Charger",
         "quantity": 25,
         "freight_cost": 475.0,
-        "expected_arrival": "Day 1 (12 hrs)",
+        "expected_arrival": f"{day_to_date_str(1)} (12 hrs)",
         "status": "In-Transit",
-        "timestamp": "2026-10-10 09:30:00",
+        "timestamp": "10/10/2026 09:30:00",
     }
 ]
 SIM_PARAMS = {
@@ -101,7 +112,7 @@ ACTIVE_SCENARIO_KEY = "normal"
 
 
 def build_full_state():
-    """Build unified, rich payload for frontend consumption."""
+    """Build unified, rich payload for frontend consumption with exact DD/MM/YYYY dates."""
     sim = run_simulation(
         CURRENT_SCENARIO,
         demand_multiplier=SIM_PARAMS["demand_multiplier"],
@@ -131,10 +142,10 @@ def build_full_state():
         # Inbound shipments count
         inbound = [s for s in CURRENT_SCENARIO.get("incoming_shipments", []) if s.get("destination_warehouse_id") == wh_id]
         
-        # Earliest stockout
+        # Earliest stockout date in DD/MM/YYYY
         stockouts = [r["days_to_stockout"] for r in wh_radar if r["days_to_stockout"] is not None]
         earliest_day = min(stockouts) if stockouts else None
-        earliest_str = f"Day {earliest_day}" if earliest_day is not None else "None (Safe)"
+        earliest_str = day_to_date_str(earliest_day) if earliest_day is not None else "None (Safe)"
 
         status = "CRITICAL" if critical_count > 0 else ("WARNING" if at_risk > 0 else "HEALTHY")
 
@@ -153,11 +164,11 @@ def build_full_state():
             "status": status,
         })
 
-    # 2. Enrich Products Catalog
+    # 2. Enrich Products Catalog with DD/MM/YYYY Stockout Dates
     products_list = []
     for r in radar:
         wh_info = wh_map.get(r["warehouse_id"], {})
-        stockout_str = f"Day {r['days_to_stockout']}" if r.get("days_to_stockout") is not None else "Safe"
+        stockout_str = day_to_date_str(r.get('days_to_stockout')) if r.get("days_to_stockout") is not None else "Safe"
         products_list.append({
             "wh_id": r["warehouse_id"],
             "wh_name": wh_info.get("name", r["warehouse_id"]),
@@ -175,13 +186,14 @@ def build_full_state():
             "transfer_cost_per_unit": wh_info.get("transfer_cost_per_unit", 12.0),
         })
 
-    # 3. Early Warning Banner
+    # 3. Early Warning Banner with exact calendar date
     critical_items = [r for r in radar if r["risk_level"] == "CRITICAL"]
     if critical_items:
         first = critical_items[0]
+        stockout_date = day_to_date_str(first.get('days_to_stockout', 1))
         early_warn = {
             "type": "critical",
-            "text": f"<strong>Early Shortage Warning:</strong> Projecting stockout for <strong>{first['sku_name']}</strong> at <strong>{first['warehouse_name']}</strong> within {first.get('days_to_stockout', 1)} day(s). Immediate warehouse transfer or compatible substitution recommended."
+            "text": f"<strong>Early Shortage Warning:</strong> Projecting stockout for <strong>{first['sku_name']}</strong> at <strong>{first['warehouse_name']}</strong> on <strong>{stockout_date}</strong>. Immediate warehouse transfer or compatible substitution recommended."
         }
     else:
         warning_items = [r for r in radar if r["risk_level"] in ("HIGH", "MEDIUM")]
@@ -194,10 +206,10 @@ def build_full_state():
         else:
             early_warn = {
                 "type": "success",
-                "text": "<strong>All Warehouses Nominal:</strong> No stockouts projected over the 7-day forecast horizon across Mumbai, Pune, Chennai, and Delhi."
+                "text": "<strong>All Warehouses Nominal:</strong> No stockouts projected over the forecast horizon across Mumbai, Pune, Chennai, and Delhi."
             }
 
-    # 4. Inbound Deliveries
+    # 4. Inbound Deliveries with DD/MM/YYYY Arrival Dates
     deliveries_list = []
     for s in CURRENT_SCENARIO.get("incoming_shipments", []):
         dest_wh = wh_map.get(s.get("destination_warehouse_id"), {})
@@ -211,9 +223,9 @@ def build_full_state():
             "product_name": sku.get("name", s.get("sku_id")),
             "dest_wh_name": dest_wh.get("name", s.get("destination_warehouse_id")),
             "quantity": s.get("quantity", 0),
-            "expected_arrival": f"Day {exp_day}",
+            "expected_arrival": day_to_date_str(exp_day),
             "delay_days": delay,
-            "actual_projected_arrival": f"Day {act_day}",
+            "actual_projected_arrival": day_to_date_str(act_day),
         })
 
     # 5. Delay Root-Cause Analysis
@@ -262,7 +274,7 @@ def build_full_state():
             "action_summary": f"{best.get('action_type', 'Warehouse Transfer')} — {best.get('details', 'Inter-hub dispatch')}",
             "reasoning": f"Total Estimated Cost: ₹{best.get('estimated_cost', 0):.2f} | Execution Time: {best.get('execution_days', 1)} day(s). Protects all customer deadlines.",
             "rejection_notes": "Rejected delayed fulfilment (heavy SLA penalties) and unverified component substitutes.",
-            "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M"),
+            "timestamp": datetime.now().strftime("%d/%m/%Y %H:%M"),
         })
 
     return {
@@ -397,6 +409,7 @@ def evaluate_transfer(payload: Dict[str, Any] = Body(...)):
         "is_safe": is_safe,
         "freight_cost": total_cost,
         "transit_days": transit_days,
+        "expected_arrival_date": day_to_date_str(transit_days),
     }
 
 
@@ -414,9 +427,9 @@ def confirm_transfer(payload: Dict[str, Any] = Body(...)):
         "product": eval_res["sku_name"],
         "quantity": int(payload.get("quantity", 20)),
         "freight_cost": eval_res["freight_cost"],
-        "expected_arrival": f"Day {eval_res['transit_days']} ({eval_res['transit_days']*24} hrs)",
+        "expected_arrival": f"{eval_res['expected_arrival_date']} ({eval_res['transit_days']*24} hrs)",
         "status": "Dispatched (In-Transit)",
-        "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "timestamp": datetime.now().strftime("%d/%m/%Y %H:%M:%S"),
     }
     CONFIRMED_TRANSFERS.insert(0, record)
     return {"success": True, "manifest_id": manifest_id, "record": record}

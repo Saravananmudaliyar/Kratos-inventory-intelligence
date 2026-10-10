@@ -297,7 +297,7 @@
                     <!-- Future Stock Protection Metrics -->
                     <div class="protection-box" id="protectionBox">
                         <div class="protection-header">
-                            <span class="protection-badge badge-healthy"><i class="fa-solid fa-shield-check"></i> Source Protected</span>
+                            <span class="protection-badge badge-healthy" id="protectionBadge"><i class="fa-solid fa-shield-check"></i> Source Protected</span>
                             <span id="protectionSummary">Mumbai Warehouse can safely transfer up to 50 units</span>
                         </div>
                         <div class="protection-grid">
@@ -306,8 +306,9 @@
                             <div><span class="text-muted">7-Day Planned Demand:</span> <strong id="valSrcDemand">35 units</strong></div>
                             <div><span class="text-muted">Safety Buffer Threshold:</span> <strong id="valSrcSafety">25 units</strong></div>
                             <div><span class="text-muted">Landed Freight Cost:</span> <strong id="valTrCost">₹320.00</strong></div>
-                            <div><span class="text-muted">Estimated Travel Time:</span> <strong id="valTrDays">1 day</strong></div>
+                            <div><span class="text-muted">Estimated Arrival:</span> <strong id="valTrDays">11/10/2026 (24 hrs)</strong></div>
                         </div>
+                        <div id="transferWarningAlert" class="alert-banner alert-banner-critical" style="display: none; margin-top: 14px; margin-bottom: 0;"></div>
                     </div>
 
                     <!-- Action Buttons -->

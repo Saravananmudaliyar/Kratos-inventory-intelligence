@@ -1,7 +1,17 @@
 /**
  * StockShield AI — Enterprise Inventory Operations Cockpit
- * Frontend Application Controller
+ * Frontend Application Controller with Exact DD/MM/YYYY Calendar Dates
  */
+
+// Helper to format date offset from base 10/10/2026
+function getFormattedDate(dayOffset = 0) {
+    const base = new Date(2026, 9, 10); // 10/10/2026 (Month is 0-indexed: 9 = October)
+    base.setDate(base.getDate() + dayOffset);
+    const dd = String(base.getDate()).padStart(2, '0');
+    const mm = String(base.getMonth() + 1).padStart(2, '0');
+    const yyyy = base.getFullYear();
+    return `${dd}/${mm}/${yyyy}`;
+}
 
 // Global State Object
 const AppState = {
@@ -149,7 +159,7 @@ function renderEarlyWarning() {
     textEl.innerHTML = warn.text;
 }
 
-// Render 2x2 Warehouse Overview Grid
+// Render 2x2 Warehouse Overview Grid with exact dates
 function renderWarehouseCards() {
     const grid = document.getElementById("warehouseGrid");
     grid.innerHTML = "";
@@ -189,7 +199,7 @@ function renderWarehouseCards() {
             </div>
             <div class="wh-footer">
                 <div><i class="fa-solid fa-triangle-exclamation"></i> <strong>${wh.at_risk_count}</strong> at risk (${wh.critical_count} critical)</div>
-                <div><i class="fa-solid fa-clock"></i> Earliest stockout: <strong>${wh.earliest_stockout_date || 'None'}</strong></div>
+                <div><i class="fa-solid fa-calendar-days"></i> Stockout Date: <strong>${wh.earliest_stockout_date || 'None (Safe)'}</strong></div>
             </div>
         `;
         grid.appendChild(card);
@@ -203,7 +213,7 @@ function selectWarehouse(whId) {
     renderTrajectoryChart(whId);
 }
 
-// Render Trajectory Chart using Chart.js
+// Render Trajectory Chart using Chart.js with DD/MM/YYYY dates
 function renderTrajectoryChart(whId) {
     const wh = (AppState.data.warehouses || []).find(w => w.wh_id === whId) || (AppState.data.warehouses && AppState.data.warehouses[0]);
     if (!wh) return;
@@ -238,8 +248,8 @@ function renderTrajectoryChart(whId) {
         tbody.appendChild(row);
     });
 
-    // Generate 7-Day Forecast Chart Data
-    const days = ["Day 0 (Now)", "Day 1", "Day 2", "Day 3", "Day 4", "Day 5", "Day 6", "Day 7"];
+    // Generate 7-Day Forecast Chart Data with exact DD/MM/YYYY dates
+    const days = [0, 1, 2, 3, 4, 5, 6, 7].map(d => d === 0 ? `${getFormattedDate(0)} (Today)` : getFormattedDate(d));
     const datasets = products.slice(0, 4).map((p, idx) => {
         const colors = ["#2563eb", "#dc2626", "#059669", "#d97706"];
         const dataPoints = [];
@@ -503,11 +513,15 @@ function updateMapVisuals() {
     }
 }
 
+// Store last evaluation data for validation
+AppState.lastTransferEval = null;
+
 async function evaluateTransferSafety() {
     const src = document.getElementById("transferSourceSelect")?.value;
     const dest = document.getElementById("transferDestSelect")?.value;
     const sku = document.getElementById("transferSkuSelect")?.value;
-    const qty = parseInt(document.getElementById("transferQtyInput")?.value || "20", 10);
+    const qtyInput = document.getElementById("transferQtyInput");
+    const qty = parseInt(qtyInput?.value || "20", 10);
 
     if (!src || !dest || !sku) return;
 
@@ -518,19 +532,65 @@ async function evaluateTransferSafety() {
             body: JSON.stringify({ source_wh: src, dest_wh: dest, sku_id: sku, quantity: qty })
         });
         const evalData = await res.json();
+        AppState.lastTransferEval = evalData;
         
         document.getElementById("valSrcAvail").textContent = `${evalData.source_available} units`;
         document.getElementById("valSrcAfter").textContent = `${evalData.source_after_transfer} units`;
         document.getElementById("valSrcDemand").textContent = `${evalData.source_7day_demand} units`;
         document.getElementById("valSrcSafety").textContent = `${evalData.source_safety_buffer} units`;
         document.getElementById("valTrCost").textContent = `₹${evalData.freight_cost.toFixed(2)}`;
-        document.getElementById("valTrDays").textContent = `${evalData.transit_days} day(s)`;
+        document.getElementById("valTrDays").textContent = `${evalData.expected_arrival_date || getFormattedDate(evalData.transit_days)} (${evalData.transit_days} day)`;
 
+        const badge = document.getElementById("protectionBadge");
         const summary = document.getElementById("protectionSummary");
+        const alertBox = document.getElementById("transferWarningAlert");
+
         if (evalData.is_safe) {
-            summary.innerHTML = `<span class="text-success"><i class="fa-solid fa-circle-check"></i> Safe: Source maintains sufficient buffer for next 7 days (Max Safe Surplus: ${evalData.max_safe_transfer} units)</span>`;
+            if (badge) {
+                badge.className = "protection-badge badge-healthy";
+                badge.innerHTML = `<i class="fa-solid fa-shield-check"></i> Source Protected`;
+            }
+            if (summary) {
+                summary.innerHTML = `<span class="text-success">${evalData.source_warehouse} can safely transfer up to <strong>${evalData.max_safe_transfer} units</strong></span>`;
+            }
+            if (qtyInput) {
+                qtyInput.style.borderColor = "";
+                qtyInput.style.backgroundColor = "";
+                qtyInput.style.boxShadow = "";
+            }
+            if (alertBox) {
+                alertBox.style.display = "none";
+                alertBox.innerHTML = "";
+            }
         } else {
-            summary.innerHTML = `<span class="text-critical"><i class="fa-solid fa-triangle-exclamation"></i> Warning: Transferring ${qty} units breaches source 7-day demand buffer (Max Safe Surplus: ${evalData.max_safe_transfer} units)</span>`;
+            // Exceeds safe limit — Pop alert warning!
+            if (badge) {
+                badge.className = "protection-badge badge-critical";
+                badge.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> Limit Breached`;
+            }
+            if (summary) {
+                summary.innerHTML = `<span class="text-critical"><strong>Warning:</strong> ${qty} units exceeds safe limit of ${evalData.max_safe_transfer} units</span>`;
+            }
+            if (qtyInput) {
+                qtyInput.style.borderColor = "#dc2626";
+                qtyInput.style.backgroundColor = "#fef2f2";
+                qtyInput.style.boxShadow = "0 0 0 3px rgba(220, 38, 38, 0.2)";
+            }
+            if (alertBox) {
+                alertBox.style.display = "flex";
+                alertBox.className = "alert-banner alert-banner-critical";
+                alertBox.innerHTML = `
+                    <div class="alert-icon"><i class="fa-solid fa-triangle-exclamation"></i></div>
+                    <div style="flex: 1;">
+                        <strong>⚠️ TRANSFER LIMIT EXCEEDED:</strong> Transferring <strong>${qty} units</strong> exceeds the safe transferable surplus of <strong>${evalData.max_safe_transfer} units</strong> from ${evalData.source_warehouse}.<br>
+                        <small>Source requires ${evalData.source_7day_demand} units for 7-day planned demand + ${evalData.source_safety_buffer} units safety buffer. Transferring this amount risks triggering an immediate shortage at ${evalData.source_warehouse}.</small>
+                    </div>
+                    <button class="btn btn-sm btn-primary" style="white-space: nowrap; margin-left: 8px;" onclick="document.getElementById('transferQtyInput').value=${evalData.max_safe_transfer}; evaluateTransferSafety();">
+                        <i class="fa-solid fa-wand-magic-sparkles"></i> Set to Safe Max (${evalData.max_safe_transfer})
+                    </button>
+                `;
+            }
+            showToast(`⚠️ Warning: Transfer quantity (${qty} units) exceeds safe limit (${evalData.max_safe_transfer} units)!`, "error");
         }
     } catch (err) {
         console.error("Transfer evaluation error:", err);
@@ -544,7 +604,12 @@ function initTransferForm() {
     if (btnSim) {
         btnSim.addEventListener("click", () => {
             evaluateTransferSafety();
-            showToast("Transfer preview simulated successfully. Source safety buffer verified.", "info");
+            const evalData = AppState.lastTransferEval;
+            if (evalData && !evalData.is_safe) {
+                showToast(`⚠️ Transfer quantity exceeds safe limit of ${evalData.max_safe_transfer} units!`, "error");
+            } else {
+                showToast("Transfer preview simulated successfully. Source safety buffer verified.", "info");
+            }
         });
     }
 
@@ -554,6 +619,22 @@ function initTransferForm() {
             const dest = document.getElementById("transferDestSelect")?.value;
             const sku = document.getElementById("transferSkuSelect")?.value;
             const qty = parseInt(document.getElementById("transferQtyInput")?.value || "20", 10);
+            const evalData = AppState.lastTransferEval;
+
+            if (evalData && !evalData.is_safe) {
+                const proceed = confirm(
+                    `⚠️ WARNING: SAFE TRANSFER LIMIT BREACHED!\n\n` +
+                    `You are requesting to transfer ${qty} units of ${evalData.sku_name}.\n` +
+                    `The maximum safe transferable surplus from ${evalData.source_warehouse} is ${evalData.max_safe_transfer} units.\n\n` +
+                    `Executing this transfer will deplete ${evalData.source_warehouse}'s 7-day safety buffer (${evalData.source_safety_buffer} units) and may cause a secondary stockout.\n\n` +
+                    `Click OK to override and force this transfer, or Cancel to adjust the quantity.`
+                );
+                if (!proceed) {
+                    document.getElementById("transferQtyInput").value = evalData.max_safe_transfer;
+                    evaluateTransferSafety();
+                    return;
+                }
+            }
 
             try {
                 const res = await fetch("/api/transfer/confirm", {
@@ -651,7 +732,7 @@ function renderCompatibilitySection() {
     }
 }
 
-// Deliveries & Delay Analysis
+// Deliveries & Delay Analysis with exact DD/MM/YYYY dates
 function renderDeliveries() {
     const tbody = document.querySelector("#deliveriesTable tbody");
     if (!tbody || !AppState.data) return;
