@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StockShield AI — Enterprise Inventory Operations Cockpit</title>
+    <!-- Modern Font and Icons -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Chart.js for beautiful interactive clean charts -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <!-- Top Enterprise Navigation Bar (No Sidebar) -->
+    <header class="navbar">
+        <div class="nav-container">
+            <div class="brand">
+                <div class="brand-icon"><i class="fa-solid fa-shield-halved"></i></div>
+                <div>
+                    <div class="brand-title">StockShield AI</div>
+                    <div class="brand-tagline">Intelligent Inventory Risk Prediction & Recovery Planner</div>
+                </div>
+            </div>
+
+            <!-- Horizontal Clean Tab Bar -->
+            <nav class="nav-tabs" id="navTabs">
+                <button class="nav-btn active" data-target="overview"><i class="fa-solid fa-boxes-stacked"></i> Warehouse Overview</button>
+                <button class="nav-btn" data-target="products"><i class="fa-solid fa-list-check"></i> Stock & Products</button>
+                <button class="nav-btn" data-target="transfers"><i class="fa-solid fa-route"></i> Transfer & Substitution</button>
+                <button class="nav-btn" data-target="deliveries"><i class="fa-solid fa-truck-ramp-box"></i> Supplier Deliveries</button>
+                <button class="nav-btn" data-target="planner"><i class="fa-solid fa-sliders"></i> Scenario Planner</button>
+                <button class="nav-btn" data-target="history"><i class="fa-solid fa-clipboard-list"></i> Decision History</button>
+            </nav>
+
+            <div class="nav-actions">
+                <span class="status-pill status-pill-healthy" id="globalStatusPill">
+                    <span class="pulse-dot"></span> Network Operational
+                </span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="main-container">
+        <!-- Executive KPI Banner -->
+        <section class="kpi-banner" id="kpiBanner">
+            <div class="kpi-card">
+                <div class="kpi-label">Monitored Items</div>
+                <div class="kpi-val" id="kpiMonitored">--</div>
+                <div class="kpi-sub">Across 4 regional hubs</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-label">At-Risk Items</div>
+                <div class="kpi-val text-critical" id="kpiAtRisk">--</div>
+                <div class="kpi-sub" id="kpiCriticalSub">-- critical breaches</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-label">Orders Threatened</div>
+                <div class="kpi-val text-warning" id="kpiOrdersThreatened">--</div>
+                <div class="kpi-sub">Pending customer shipments</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-label">Est. Landed Recovery Cost</div>
+                <div class="kpi-val" id="kpiDisruptionCost">--</div>
+                <div class="kpi-sub">Optimal mitigation actions</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-label">Verified Recovery Options</div>
+                <div class="kpi-val text-success" id="kpiFeasible">--</div>
+                <div class="kpi-sub">100% constraint compliant</div>
+            </div>
+        </section>
+
+        <!-- PAGE 1: WAREHOUSE OVERVIEW -->
+        <section class="page-view active" id="view-overview">
+            <!-- Early Warning Alert Strip -->
+            <div class="alert-banner alert-banner-critical" id="earlyWarningBanner">
+                <div class="alert-icon"><i class="fa-solid fa-triangle-exclamation"></i></div>
+                <div class="alert-content" id="earlyWarningText">
+                    <strong>Early Shortage Warning:</strong> Projecting impending stockout for 65W USB-C Fast Charger at Pune Warehouse.
+                </div>
+            </div>
+
+            <!-- 2x2 Warehouse Grid -->
+            <h2 class="section-title"><i class="fa-solid fa-warehouse"></i> Regional Warehouses (Mumbai, Pune, Chennai, Delhi)</h2>
+            <p class="section-desc">Real-time inventory levels, buffer breaches, and earliest forecast stockout dates.</p>
+            
+            <div class="warehouse-grid" id="warehouseGrid">
+                <!-- Rendered Dynamically via JS -->
+            </div>
+
+            <!-- Warehouse Detail View -->
+            <div class="content-card" id="warehouseDetailCard">
+                <div class="card-header">
+                    <div>
+                        <h3 class="card-title" id="whDetailTitle">Inventory & Forecast Trajectory</h3>
+                        <div class="card-subtitle" id="whDetailSub">Select any warehouse card above to inspect specific stock trajectories</div>
+                    </div>
+                </div>
+                <div class="chart-container">
+                    <canvas id="whTrajectoryChart" height="90"></canvas>
+                </div>
+                <div style="margin-top: 1.5rem;">
+                    <h4 style="font-size: 0.95rem; font-weight: 700; margin-bottom: 0.75rem;">Product Stock Balances</h4>
+                    <div class="table-responsive">
+                        <table class="data-table" id="whProductsTable">
+                            <thead>
+                                <tr>
+                                    <th>Product Name</th>
+                                    <th>SKU</th>
+                                    <th>On-Hand</th>
+                                    <th>Reserved</th>
+                                    <th>Available (ATP)</th>
+                                    <th>Safety Buffer</th>
+                                    <th>Daily Demand</th>
+                                    <th>Est. Stockout</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- PAGE 2: STOCK & PRODUCTS -->
+        <section class="page-view" id="view-products">
+            <div class="content-card">
+                <div class="card-header">
+                    <div>
+                        <h3 class="card-title"><i class="fa-solid fa-boxes-packing"></i> Network Inventory Catalog</h3>
+                        <div class="card-subtitle">Search, filter, and inspect inventory across all 4 regional hubs</div>
+                    </div>
+                    <div class="filter-bar">
+                        <input type="text" id="prodSearchInput" class="form-control" placeholder="Search product or SKU...">
+                        <select id="prodWarehouseFilter" class="form-control">
+                            <option value="ALL">All Warehouses</option>
+                            <option value="WH-MUMBAI">Mumbai Warehouse</option>
+                            <option value="WH-PUNE">Pune Warehouse</option>
+                            <option value="WH-CHENNAI">Chennai Warehouse</option>
+                            <option value="WH-DELHI">Delhi Warehouse</option>
+                        </select>
+                        <select id="prodStatusFilter" class="form-control">
+                            <option value="ALL">All Statuses</option>
+                            <option value="CRITICAL">Critical Shortage</option>
+                            <option value="HIGH">High Risk</option>
+                            <option value="MEDIUM">Medium Risk</option>
+                            <option value="LOW">Healthy</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="table-responsive">
+                    <table class="data-table" id="catalogTable">
+                        <thead>
+                            <tr>
+                                <th>Warehouse</th>
+                                <th>Product Name</th>
+                                <th>SKU</th>
+                                <th>Physical Stock</th>
+                                <th>Reserved</th>
+                                <th>Available Stock</th>
+                                <th>Safety Buffer</th>
+                                <th>Daily Demand</th>
+                                <th>Forecast Stockout</th>
+                                <th>Risk Tier</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Cross Warehouse Matrix -->
+            <div class="content-card" style="margin-top: 1.5rem;">
+                <div class="card-header">
+                    <div>
+                        <h3 class="card-title"><i class="fa-solid fa-network-wired"></i> Cross-Warehouse Product Matrix</h3>
+                        <div class="card-subtitle">Compare inventory allocation for any component across all 4 regional hubs</div>
+                    </div>
+                    <div>
+                        <select id="matrixSkuSelect" class="form-control" style="min-width: 260px;"></select>
+                    </div>
+                </div>
+                <div class="table-responsive">
+                    <table class="data-table" id="matrixTable">
+                        <thead>
+                            <tr>
+                                <th>Warehouse</th>
+                                <th>Location</th>
+                                <th>Physical Stock</th>
+                                <th>Reserved Stock</th>
+                                <th>Available Stock</th>
+                                <th>Safety Stock Buffer</th>
+                                <th>Immediate Surplus</th>
+                                <th>Transit Time</th>
+                                <th>Transfer Cost / Unit</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- PAGE 3: TRANSFER & SUBSTITUTION (WITH NETWORK MAP) -->
+        <section class="page-view" id="view-transfers">
+            <h2 class="section-title"><i class="fa-solid fa-route"></i> Warehouse Transfer & Substitution Planner</h2>
+            <p class="section-desc">Inter-warehouse route optimization with source future stock protection and strict component compatibility checks.</p>
+
+            <div class="grid-2col">
+                <!-- Interactive Logistics Map Panel -->
+                <div class="content-card">
+                    <h3 class="card-title" style="margin-bottom: 0.25rem;"><i class="fa-solid fa-map-location-dot"></i> Live Logistics Route Map</h3>
+                    <p class="card-subtitle">Visual transfer corridor and cargo transit between hubs</p>
+                    
+                    <div class="map-wrapper">
+                        <svg width="100%" height="340" viewBox="0 0 420 340" id="networkSvg">
+                            <defs>
+                                <linearGradient id="routeGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                                    <stop offset="0%" stop-color="#3b82f6"/>
+                                    <stop offset="100%" stop-color="#10b981"/>
+                                </linearGradient>
+                            </defs>
+                            <!-- Mesh Lines -->
+                            <line x1="260" y1="50" x2="120" y2="170" class="mesh-line"/>
+                            <line x1="120" y1="170" x2="180" y2="220" class="mesh-line"/>
+                            <line x1="180" y1="220" x2="270" y2="290" class="mesh-line"/>
+                            <line x1="260" y1="50" x2="270" y2="290" class="mesh-line"/>
+                            <line x1="120" y1="170" x2="270" y2="290" class="mesh-line"/>
+                            
+                            <!-- Dynamic Route Path -->
+                            <line id="activeRouteLine" x1="120" y1="170" x2="180" y2="220" stroke="url(#routeGrad)" stroke-width="4" stroke-linecap="round"/>
+                            
+                            <!-- Moving Cargo Pulse Indicator -->
+                            <circle id="movingCargoDot" r="6" fill="#f59e0b" stroke="#ffffff" stroke-width="2">
+                                <animateMotion id="cargoAnim" path="M 120 170 L 180 220" dur="2s" repeatCount="indefinite"/>
+                            </circle>
+
+                            <!-- Nodes -->
+                            <g id="node-DELHI" class="map-node">
+                                <circle cx="260" cy="50" r="20" class="node-circle"/>
+                                <text x="260" y="54" class="node-code">DEL</text>
+                                <text x="260" y="82" class="node-name">Delhi Warehouse</text>
+                            </g>
+                            <g id="node-MUMBAI" class="map-node">
+                                <circle cx="120" cy="170" r="20" class="node-circle active-src"/>
+                                <text x="120" y="174" class="node-code">BOM</text>
+                                <text x="120" y="202" class="node-name">Mumbai Warehouse</text>
+                            </g>
+                            <g id="node-PUNE" class="map-node">
+                                <circle cx="180" cy="220" r="20" class="node-circle active-dest"/>
+                                <text x="180" y="224" class="node-code">PNQ</text>
+                                <text x="180" y="252" class="node-name">Pune Warehouse</text>
+                            </g>
+                            <g id="node-CHENNAI" class="map-node">
+                                <circle cx="270" cy="290" r="20" class="node-circle"/>
+                                <text x="270" y="294" class="node-code">MAA</text>
+                                <text x="270" y="322" class="node-name">Chennai Warehouse</text>
+                            </g>
+                        </svg>
+                        <div class="map-legend">
+                            <span class="legend-item"><span class="legend-color legend-src"></span> Source (Surplus)</span>
+                            <span class="legend-item"><span class="legend-color legend-dest"></span> Destination (Deficit)</span>
+                            <span class="legend-item"><span class="legend-color legend-pulse"></span> In-Transit Stock</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Transfer Execution & Source Protection Panel -->
+                <div class="content-card">
+                    <h3 class="card-title"><i class="fa-solid fa-truck-fast"></i> Safe Transfer Evaluator</h3>
+                    <p class="card-subtitle">Source warehouse safety protection & landed cost preview</p>
+                    
+                    <div class="form-grid" style="margin-top: 1rem;">
+                        <div class="form-group">
+                            <label>Source Warehouse</label>
+                            <select id="transferSourceSelect" class="form-control"></select>
+                        </div>
+                        <div class="form-group">
+                            <label>Destination Warehouse</label>
+                            <select id="transferDestSelect" class="form-control"></select>
+                        </div>
+                        <div class="form-group">
+                            <label>Product</label>
+                            <select id="transferSkuSelect" class="form-control"></select>
+                        </div>
+                        <div class="form-group">
+                            <label>Quantity to Transfer</label>
+                            <input type="number" id="transferQtyInput" class="form-control" value="20" min="5" max="100" step="5">
+                        </div>
+                    </div>
+
+                    <!-- Future Stock Protection Metrics -->
+                    <div class="protection-box" id="protectionBox">
+                        <div class="protection-header">
+                            <span class="protection-badge badge-healthy"><i class="fa-solid fa-shield-check"></i> Source Protected</span>
+                            <span id="protectionSummary">Mumbai Warehouse can safely transfer up to 50 units</span>
+                        </div>
+                        <div class="protection-grid">
+                            <div><span class="text-muted">Source Available:</span> <strong id="valSrcAvail">75 units</strong></div>
+                            <div><span class="text-muted">Post-Transfer:</span> <strong id="valSrcAfter">55 units</strong></div>
+                            <div><span class="text-muted">7-Day Planned Demand:</span> <strong id="valSrcDemand">35 units</strong></div>
+                            <div><span class="text-muted">Safety Buffer Threshold:</span> <strong id="valSrcSafety">25 units</strong></div>
+                            <div><span class="text-muted">Landed Freight Cost:</span> <strong id="valTrCost">₹320.00</strong></div>
+                            <div><span class="text-muted">Estimated Travel Time:</span> <strong id="valTrDays">1 day</strong></div>
+                        </div>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="action-buttons">
+                        <button class="btn btn-secondary" id="btnSimulateTransfer"><i class="fa-solid fa-eye"></i> Simulate (Preview Only)</button>
+                        <button class="btn btn-primary" id="btnConfirmTransfer"><i class="fa-solid fa-check"></i> Confirm Operational Transfer</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Operational Transfer Manifest Logs -->
+            <div class="content-card" style="margin-top: 1.5rem;" id="manifestCard">
+                <h3 class="card-title"><i class="fa-solid fa-receipt"></i> Operational Transfer Manifests</h3>
+                <div class="table-responsive" style="margin-top: 0.75rem;">
+                    <table class="data-table" id="transferLogsTable">
+                        <thead>
+                            <tr>
+                                <th>Transfer ID</th>
+                                <th>Source</th>
+                                <th>Destination</th>
+                                <th>Product</th>
+                                <th>Quantity</th>
+                                <th>Freight Cost</th>
+                                <th>Expected Arrival</th>
+                                <th>Status</th>
+                                <th>Timestamp</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Strict Compatibility Engine -->
+            <div class="content-card" style="margin-top: 1.5rem;">
+                <div class="card-header">
+                    <div>
+                        <h3 class="card-title"><i class="fa-solid fa-microchip"></i> Component Compatibility Engine</h3>
+                        <div class="card-subtitle">Technical voltage, pin-out, and form-factor replacement verification</div>
+                    </div>
+                </div>
+                <div class="grid-2col" style="margin-top: 1rem;">
+                    <div>
+                        <h4 style="font-size: 0.9rem; font-weight: 700; color: #059669; margin-bottom: 0.5rem;"><i class="fa-solid fa-circle-check"></i> Approved Compatible Substitutes</h4>
+                        <div id="approvedSubsList"></div>
+                    </div>
+                    <div>
+                        <h4 style="font-size: 0.9rem; font-weight: 700; color: #dc2626; margin-bottom: 0.5rem;"><i class="fa-solid fa-circle-xmark"></i> Incompatible Alternatives (Rejected)</h4>
+                        <div id="rejectedSubsList"></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- PAGE 4: SUPPLIER DELIVERIES -->
+        <section class="page-view" id="view-deliveries">
+            <div class="content-card">
+                <div class="card-header">
+                    <div>
+                        <h3 class="card-title"><i class="fa-solid fa-truck-plane"></i> Inbound Supplier Deliveries & Purchase Orders</h3>
+                        <div class="card-subtitle">Tracking vendor replenishment shipments, lead times, and delay root-cause analysis</div>
+                    </div>
+                </div>
+                <div class="table-responsive">
+                    <table class="data-table" id="deliveriesTable">
+                        <thead>
+                            <tr>
+                                <th>Shipment ID</th>
+                                <th>Supplier</th>
+                                <th>Product</th>
+                                <th>Destination</th>
+                                <th>Quantity</th>
+                                <th>Expected Arrival</th>
+                                <th>Supplier Delay</th>
+                                <th>Actual Projected Arrival</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="content-card" style="margin-top: 1.5rem;">
+                <h3 class="card-title"><i class="fa-solid fa-magnifying-glass-chart"></i> Delay Impact & Root-Cause Analysis</h3>
+                <div id="delayAnalysisBox" style="margin-top: 1rem;"></div>
+            </div>
+        </section>
+
+        <!-- PAGE 5: SCENARIO PLANNER -->
+        <section class="page-view" id="view-planner">
+            <h2 class="section-title"><i class="fa-solid fa-sliders"></i> Scenario Planner (Supply Disruption Stress-Testing)</h2>
+            <p class="section-desc">Simulate supplier port delays, sudden demand spikes, or freight cost increases without modifying real operational inventory.</p>
+
+            <div class="content-card">
+                <h3 class="card-title">1. One-Click Disruption Presets</h3>
+                <div class="preset-buttons" id="presetButtons">
+                    <!-- Presets injected dynamically -->
+                </div>
+
+                <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 1.5rem 0;">
+
+                <h3 class="card-title">2. Custom Shock Parameters</h3>
+                <div class="form-grid" style="margin-top: 1rem;">
+                    <div class="form-group">
+                        <label>Demand Surge Multiplier (e.g. 1.8 = +80% demand)</label>
+                        <input type="number" id="simDemandInput" class="form-control" value="1.0" min="0.5" max="3.0" step="0.1">
+                    </div>
+                    <div class="form-group">
+                        <label>Additional Supplier Delay (Days)</label>
+                        <input type="number" id="simDelayInput" class="form-control" value="0" min="0" max="14" step="1">
+                    </div>
+                    <div class="form-group">
+                        <label>Freight Transfer Cost Multiplier</label>
+                        <input type="number" id="simTransferCostInput" class="form-control" value="1.0" min="0.5" max="3.0" step="0.1">
+                    </div>
+                </div>
+
+                <div class="action-buttons" style="margin-top: 1.25rem;">
+                    <button class="btn btn-primary" id="btnApplySim"><i class="fa-solid fa-play"></i> Apply Disruption Shock</button>
+                    <button class="btn btn-secondary" id="btnResetSim"><i class="fa-solid fa-rotate-left"></i> Reset to Normal Baseline</button>
+                </div>
+            </div>
+
+            <!-- Impact Matrix -->
+            <div class="content-card" style="margin-top: 1.5rem;">
+                <h3 class="card-title"><i class="fa-solid fa-table-columns"></i> Baseline vs. Disrupted Scenario Matrix</h3>
+                <div class="table-responsive" style="margin-top: 1rem;">
+                    <table class="data-table" id="simComparisonTable">
+                        <thead>
+                            <tr>
+                                <th>Operational Metric</th>
+                                <th>Baseline Operations</th>
+                                <th>Simulated Disruption</th>
+                                <th>Net Delta Impact</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- PAGE 6: DECISION HISTORY -->
+        <section class="page-view" id="view-history">
+            <div class="content-card">
+                <div class="card-header">
+                    <div>
+                        <h3 class="card-title"><i class="fa-solid fa-book-journal-whills"></i> Automated Decision Audit Trail</h3>
+                        <div class="card-subtitle">Transparent mathematical reasoning, evaluated strategies, and rejection logs for every shortage</div>
+                    </div>
+                    <div>
+                        <a href="/api/audit/csv" class="btn btn-secondary" style="text-decoration:none;"><i class="fa-solid fa-download"></i> Download Audit Log (CSV)</a>
+                    </div>
+                </div>
+                <div id="decisionHistoryList" style="margin-top: 1rem;"></div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        StockShield AI — Enterprise Inventory Operations Cockpit | Regional Hubs: Mumbai • Pune • Chennai • Delhi | Deterministic Decision Engine
+    </footer>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>

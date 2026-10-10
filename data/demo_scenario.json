@@ -1,0 +1,315 @@
+{
+  "warehouses": [
+    {
+      "id": "WH-MUMBAI",
+      "name": "Mumbai Warehouse",
+      "location": "Mumbai",
+      "transfer_cost_per_unit": 10.0,
+      "fixed_shipping_cost": 120.0,
+      "transfer_days": 1
+    },
+    {
+      "id": "WH-PUNE",
+      "name": "Pune Warehouse",
+      "location": "Pune",
+      "transfer_cost_per_unit": 8.0,
+      "fixed_shipping_cost": 100.0,
+      "transfer_days": 1
+    },
+    {
+      "id": "WH-CHENNAI",
+      "name": "Chennai Warehouse",
+      "location": "Chennai",
+      "transfer_cost_per_unit": 15.0,
+      "fixed_shipping_cost": 180.0,
+      "transfer_days": 2
+    },
+    {
+      "id": "WH-DELHI",
+      "name": "Delhi Warehouse",
+      "location": "Delhi",
+      "transfer_cost_per_unit": 18.0,
+      "fixed_shipping_cost": 200.0,
+      "transfer_days": 2
+    }
+  ],
+  "skus": [
+    {
+      "sku_id": "SKU-CHARGER-65W",
+      "name": "65W USB-C Fast Charger",
+      "category": "Chargers",
+      "unit_cost": 450.0,
+      "express_cost": 750.0,
+      "standard_lead_time_days": 5,
+      "express_lead_time_days": 2,
+      "dimensions": "60x40x28mm",
+      "voltage": "20V/3.25A",
+      "material": "GaN-Polycarbonate",
+      "safety_stock": 25,
+      "avg_daily_demand": 15,
+      "recent_sales": [14, 16, 15, 17, 13, 15, 15]
+    },
+    {
+      "sku_id": "SKU-CHARGER-65W-PRO",
+      "name": "65W USB-C GaN Charger Pro",
+      "category": "Chargers",
+      "unit_cost": 520.0,
+      "express_cost": 820.0,
+      "standard_lead_time_days": 5,
+      "express_lead_time_days": 2,
+      "dimensions": "60x40x28mm",
+      "voltage": "20V/3.25A",
+      "material": "GaN-Polycarbonate",
+      "safety_stock": 15,
+      "avg_daily_demand": 8,
+      "recent_sales": [8, 7, 9, 8, 8, 9, 8]
+    },
+    {
+      "sku_id": "SKU-CHARGER-18W",
+      "name": "18W USB-A Standard Charger",
+      "category": "Chargers",
+      "unit_cost": 180.0,
+      "express_cost": 300.0,
+      "standard_lead_time_days": 4,
+      "express_lead_time_days": 2,
+      "dimensions": "50x35x25mm",
+      "voltage": "5V/3A",
+      "material": "ABS-Plastic",
+      "safety_stock": 20,
+      "avg_daily_demand": 10,
+      "recent_sales": [10, 11, 9, 10, 12, 10, 10]
+    },
+    {
+      "sku_id": "SKU-MOUSE-WL",
+      "name": "Ergonomic Wireless Mouse",
+      "category": "Peripherals",
+      "unit_cost": 650.0,
+      "express_cost": 950.0,
+      "standard_lead_time_days": 4,
+      "express_lead_time_days": 1,
+      "dimensions": "115x65x38mm",
+      "voltage": "1.5V-AA",
+      "material": "Matte-ABS",
+      "safety_stock": 30,
+      "avg_daily_demand": 12,
+      "recent_sales": [12, 11, 13, 12, 14, 11, 12]
+    },
+    {
+      "sku_id": "SKU-KEYBOARD-BT",
+      "name": "Slim Bluetooth Keyboard",
+      "category": "Peripherals",
+      "unit_cost": 1200.0,
+      "express_cost": 1800.0,
+      "standard_lead_time_days": 6,
+      "express_lead_time_days": 2,
+      "dimensions": "285x120x15mm",
+      "voltage": "3.7V-LiPo",
+      "material": "Aluminum-Alloy",
+      "safety_stock": 15,
+      "avg_daily_demand": 6,
+      "recent_sales": [5, 6, 7, 6, 5, 6, 6]
+    },
+    {
+      "sku_id": "SKU-POWERBANK-20K",
+      "name": "20000mAh PD Power Bank",
+      "category": "Power",
+      "unit_cost": 1400.0,
+      "express_cost": 2100.0,
+      "standard_lead_time_days": 5,
+      "express_lead_time_days": 2,
+      "dimensions": "145x68x27mm",
+      "voltage": "5V-20V",
+      "material": "Anodized-Aluminum",
+      "safety_stock": 20,
+      "avg_daily_demand": 8,
+      "recent_sales": [7, 8, 9, 8, 7, 8, 8]
+    },
+    {
+      "sku_id": "SKU-HEADPHONES-ANC",
+      "name": "ANC Wireless Headphones",
+      "category": "Audio",
+      "unit_cost": 2200.0,
+      "express_cost": 3200.0,
+      "standard_lead_time_days": 6,
+      "express_lead_time_days": 2,
+      "dimensions": "190x165x80mm",
+      "voltage": "3.7V-LiPo",
+      "material": "Polycarbonate-ProteinLeather",
+      "safety_stock": 10,
+      "avg_daily_demand": 5,
+      "recent_sales": [4, 5, 5, 6, 4, 5, 5]
+    },
+    {
+      "sku_id": "SKU-CABLE-USBC",
+      "name": "Braided USB-C to USB-C Cable (1.5m)",
+      "category": "Cables",
+      "unit_cost": 150.0,
+      "express_cost": 260.0,
+      "standard_lead_time_days": 3,
+      "express_lead_time_days": 1,
+      "dimensions": "1500x5x5mm",
+      "voltage": "20V/5A-100W",
+      "material": "Nylon-Braid-Copper",
+      "safety_stock": 50,
+      "avg_daily_demand": 25,
+      "recent_sales": [24, 26, 25, 27, 23, 25, 25]
+    }
+  ],
+  "inventory": [
+    {"warehouse_id": "WH-MUMBAI", "sku_id": "SKU-CHARGER-65W", "on_hand": 100, "reserved": 25},
+    {"warehouse_id": "WH-MUMBAI", "sku_id": "SKU-CHARGER-65W-PRO", "on_hand": 40, "reserved": 5},
+    {"warehouse_id": "WH-MUMBAI", "sku_id": "SKU-CHARGER-18W", "on_hand": 60, "reserved": 10},
+    {"warehouse_id": "WH-MUMBAI", "sku_id": "SKU-MOUSE-WL", "on_hand": 85, "reserved": 15},
+    {"warehouse_id": "WH-MUMBAI", "sku_id": "SKU-KEYBOARD-BT", "on_hand": 35, "reserved": 5},
+    {"warehouse_id": "WH-MUMBAI", "sku_id": "SKU-POWERBANK-20K", "on_hand": 50, "reserved": 10},
+    {"warehouse_id": "WH-MUMBAI", "sku_id": "SKU-HEADPHONES-ANC", "on_hand": 25, "reserved": 5},
+    {"warehouse_id": "WH-MUMBAI", "sku_id": "SKU-CABLE-USBC", "on_hand": 180, "reserved": 30},
+
+    {"warehouse_id": "WH-PUNE", "sku_id": "SKU-CHARGER-65W", "on_hand": 28, "reserved": 18},
+    {"warehouse_id": "WH-PUNE", "sku_id": "SKU-CHARGER-65W-PRO", "on_hand": 25, "reserved": 5},
+    {"warehouse_id": "WH-PUNE", "sku_id": "SKU-CHARGER-18W", "on_hand": 45, "reserved": 5},
+    {"warehouse_id": "WH-PUNE", "sku_id": "SKU-MOUSE-WL", "on_hand": 50, "reserved": 10},
+    {"warehouse_id": "WH-PUNE", "sku_id": "SKU-KEYBOARD-BT", "on_hand": 20, "reserved": 5},
+    {"warehouse_id": "WH-PUNE", "sku_id": "SKU-POWERBANK-20K", "on_hand": 30, "reserved": 5},
+    {"warehouse_id": "WH-PUNE", "sku_id": "SKU-HEADPHONES-ANC", "on_hand": 18, "reserved": 3},
+    {"warehouse_id": "WH-PUNE", "sku_id": "SKU-CABLE-USBC", "on_hand": 120, "reserved": 20},
+
+    {"warehouse_id": "WH-CHENNAI", "sku_id": "SKU-CHARGER-65W", "on_hand": 75, "reserved": 10},
+    {"warehouse_id": "WH-CHENNAI", "sku_id": "SKU-CHARGER-65W-PRO", "on_hand": 30, "reserved": 5},
+    {"warehouse_id": "WH-CHENNAI", "sku_id": "SKU-CHARGER-18W", "on_hand": 50, "reserved": 10},
+    {"warehouse_id": "WH-CHENNAI", "sku_id": "SKU-MOUSE-WL", "on_hand": 70, "reserved": 10},
+    {"warehouse_id": "WH-CHENNAI", "sku_id": "SKU-KEYBOARD-BT", "on_hand": 25, "reserved": 5},
+    {"warehouse_id": "WH-CHENNAI", "sku_id": "SKU-POWERBANK-20K", "on_hand": 45, "reserved": 8},
+    {"warehouse_id": "WH-CHENNAI", "sku_id": "SKU-HEADPHONES-ANC", "on_hand": 22, "reserved": 4},
+    {"warehouse_id": "WH-CHENNAI", "sku_id": "SKU-CABLE-USBC", "on_hand": 160, "reserved": 35},
+
+    {"warehouse_id": "WH-DELHI", "sku_id": "SKU-CHARGER-65W", "on_hand": 40, "reserved": 15},
+    {"warehouse_id": "WH-DELHI", "sku_id": "SKU-CHARGER-65W-PRO", "on_hand": 35, "reserved": 8},
+    {"warehouse_id": "WH-DELHI", "sku_id": "SKU-CHARGER-18W", "on_hand": 55, "reserved": 10},
+    {"warehouse_id": "WH-DELHI", "sku_id": "SKU-MOUSE-WL", "on_hand": 65, "reserved": 12},
+    {"warehouse_id": "WH-DELHI", "sku_id": "SKU-KEYBOARD-BT", "on_hand": 28, "reserved": 6},
+    {"warehouse_id": "WH-DELHI", "sku_id": "SKU-POWERBANK-20K", "on_hand": 38, "reserved": 7},
+    {"warehouse_id": "WH-DELHI", "sku_id": "SKU-HEADPHONES-ANC", "on_hand": 19, "reserved": 3},
+    {"warehouse_id": "WH-DELHI", "sku_id": "SKU-CABLE-USBC", "on_hand": 140, "reserved": 25}
+  ],
+  "incoming_shipments": [
+    {
+      "shipment_id": "SHIP-001",
+      "sku_id": "SKU-CHARGER-65W",
+      "warehouse_id": "WH-PUNE",
+      "quantity": 50,
+      "expected_arrival_day": 2,
+      "status": "delayed",
+      "delay_days": 4,
+      "supplier": "VoltTech Components Ltd."
+    },
+    {
+      "shipment_id": "SHIP-002",
+      "sku_id": "SKU-MOUSE-WL",
+      "warehouse_id": "WH-DELHI",
+      "quantity": 100,
+      "expected_arrival_day": 3,
+      "status": "on_time",
+      "delay_days": 0,
+      "supplier": "Precision Peripherals"
+    },
+    {
+      "shipment_id": "SHIP-003",
+      "sku_id": "SKU-CABLE-USBC",
+      "warehouse_id": "WH-CHENNAI",
+      "quantity": 300,
+      "expected_arrival_day": 2,
+      "status": "on_time",
+      "delay_days": 0,
+      "supplier": "NexLink Accessories"
+    }
+  ],
+  "customer_orders": [
+    {
+      "order_id": "ORD-2001",
+      "customer": "TechHub Retailers Pune",
+      "sku_id": "SKU-CHARGER-65W",
+      "quantity": 30,
+      "warehouse_id": "WH-PUNE",
+      "deadline_day": 2,
+      "priority": "critical",
+      "late_penalty_per_day": 600.0
+    },
+    {
+      "order_id": "ORD-2002",
+      "customer": "Apex Electronics Pune",
+      "sku_id": "SKU-CHARGER-65W",
+      "quantity": 20,
+      "warehouse_id": "WH-PUNE",
+      "deadline_day": 4,
+      "priority": "high",
+      "late_penalty_per_day": 350.0
+    },
+    {
+      "order_id": "ORD-2003",
+      "customer": "Metro Solutions Mumbai",
+      "sku_id": "SKU-MOUSE-WL",
+      "quantity": 25,
+      "warehouse_id": "WH-MUMBAI",
+      "deadline_day": 4,
+      "priority": "medium",
+      "late_penalty_per_day": 200.0
+    },
+    {
+      "order_id": "ORD-2004",
+      "customer": "SouthTech Chennai",
+      "sku_id": "SKU-POWERBANK-20K",
+      "quantity": 20,
+      "warehouse_id": "WH-CHENNAI",
+      "deadline_day": 3,
+      "priority": "high",
+      "late_penalty_per_day": 400.0
+    },
+    {
+      "order_id": "ORD-2005",
+      "customer": "NorthGate Delhi",
+      "sku_id": "SKU-KEYBOARD-BT",
+      "quantity": 12,
+      "warehouse_id": "WH-DELHI",
+      "deadline_day": 5,
+      "priority": "medium",
+      "late_penalty_per_day": 250.0
+    }
+  ],
+  "compatibility_rules": [
+    {
+      "sku_id": "SKU-CHARGER-65W",
+      "compatible_with": "SKU-CHARGER-65W-PRO",
+      "status": "approved",
+      "notes": "Pin & protocol compatible: 65W USB-PD standard. GaN Pro version is safe direct replacement."
+    },
+    {
+      "sku_id": "SKU-CHARGER-65W",
+      "compatible_with": "SKU-CHARGER-18W",
+      "status": "rejected",
+      "rejection_reason": "Wattage and voltage mismatch: 18W cannot supply power to 65W laptops/devices. Incompatible."
+    },
+    {
+      "sku_id": "SKU-CHARGER-65W-PRO",
+      "compatible_with": "SKU-CHARGER-65W",
+      "status": "approved",
+      "notes": "Standard 65W can substitute for 65W Pro in standard charging scenarios."
+    }
+  ],
+  "decision_policy": {
+    "planning_horizon_days": 7,
+    "weights": {
+      "cost": 0.35,
+      "fulfillment_time": 0.30,
+      "reliability": 0.20,
+      "priority_alignment": 0.15
+    },
+    "tie_breaking": "Prefer lower fulfillment time, then lower cost, then higher reliability.",
+    "hard_constraints": [
+      "Never use reserved inventory for transfers",
+      "Never violate safety stock at source warehouse after forecast demand",
+      "Never recommend incompatible substitutes",
+      "Never exceed available transfer capacity"
+    ]
+  }
+}
