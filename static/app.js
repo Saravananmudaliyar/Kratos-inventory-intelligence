@@ -36,6 +36,7 @@ document.addEventListener("DOMContentLoaded", () => {
     initFilters();
     initTransferForm();
     initScenarioPlanner();
+    initStockTweaker();
     fetchAppState();
 });
 
@@ -103,7 +104,7 @@ async function fetchAppState() {
         renderDeliveries();
         renderWarehousePlans();
         renderDelayAnalysis();
-        renderPresets();
+        renderTargetDemoScenario();
         renderDecisionHistory();
         if (AppState.data.comparison) {
             renderSimulationComparison(AppState.data.comparison);
@@ -1031,10 +1032,93 @@ function renderDelayAnalysis() {
     `;
 }
 
-// Scenario Planner
+// Target Demonstration Scenario: Delayed Component vs Competing Orders
+function renderTargetDemoScenario() {
+    const demo = AppState.data.target_demo;
+    if (!demo) return;
+
+    // 1. Competing Customer Orders Table
+    const tbodyOrders = document.querySelector("#competingOrdersTable tbody");
+    if (tbodyOrders && demo.competing_orders) {
+        tbodyOrders.innerHTML = "";
+        demo.competing_orders.forEach(o => {
+            const row = document.createElement("tr");
+            const prioBadge = o.priority === "CRITICAL" ? '<span class="badge badge-critical">CRITICAL</span>' : '<span class="badge badge-warning">HIGH</span>';
+            row.innerHTML = `
+                <td class="mono"><strong>${o.order_id}</strong></td>
+                <td><strong>${o.customer}</strong></td>
+                <td>${o.product}</td>
+                <td>${o.warehouse}</td>
+                <td><strong>${o.quantity} units</strong></td>
+                <td>${o.deadline}</td>
+                <td>${prioBadge}</td>
+                <td class="text-critical"><strong>${o.late_penalty}</strong></td>
+                <td><span class="badge badge-warning">${o.status}</span></td>
+            `;
+            tbodyOrders.appendChild(row);
+        });
+    }
+
+    // 2. Autonomous Strategy Comparison Cards Grid
+    const grid = document.getElementById("strategyCardsGrid");
+    if (grid && demo.strategies) {
+        grid.innerHTML = "";
+        demo.strategies.forEach(s => {
+            const card = document.createElement("div");
+            const isRec = s.rank.includes("RECOMMENDED") ? "recommended" : "";
+            card.className = `strategy-card ${isRec}`;
+            card.innerHTML = `
+                <div>
+                    <div class="strategy-card-header">
+                        <div>
+                            <div class="strategy-title">${s.title}</div>
+                            <div class="strategy-category"><i class="fa-solid fa-layer-group"></i> ${s.category}</div>
+                        </div>
+                        <span class="badge ${s.badge}">${s.rank}</span>
+                    </div>
+                    <div class="strategy-metric-grid">
+                        <div><span class="text-muted">Landed Cost:</span> <strong>${s.cost}</strong></div>
+                        <div><span class="text-muted">Lead Time:</span> <strong>${s.transit_time}</strong></div>
+                        <div><span class="text-muted">Protection:</span> <strong>${s.source_protection}</strong></div>
+                        <div><span class="text-muted">Fulfillment:</span> <strong class="text-success">${s.orders_saved}</strong></div>
+                    </div>
+                </div>
+                <div class="strategy-details">
+                    <strong>Evaluation Rationale:</strong> ${s.details}
+                </div>
+            `;
+            grid.appendChild(card);
+        });
+    }
+}
+
+// Target Demo Scenario & Stress-Testing Controller
 function initScenarioPlanner() {
+    const btnExecTarget = document.getElementById("btnExecuteTargetDemoPlan");
     const btnApply = document.getElementById("btnApplySim");
     const btnReset = document.getElementById("btnResetSim");
+
+    if (btnExecTarget) {
+        btnExecTarget.addEventListener("click", async () => {
+            try {
+                const res = await fetch("/api/scenario/execute_target_plan", { method: "POST" });
+                const result = await res.json();
+                if (result.success) {
+                    showToast(result.message, "success");
+                    await fetchAppState();
+
+                    // Apply smooth success highlight animation
+                    setTimeout(() => {
+                        const stratGrid = document.getElementById("strategyCardsGrid");
+                        if (stratGrid) stratGrid.classList.add("transfer-success-pulse");
+                        setTimeout(() => stratGrid && stratGrid.classList.remove("transfer-success-pulse"), 2500);
+                    }, 100);
+                }
+            } catch (err) {
+                showToast("Failed to execute mitigation plan: " + err.message, "error");
+            }
+        });
+    }
 
     if (btnApply) {
         btnApply.addEventListener("click", async () => {
@@ -1050,7 +1134,7 @@ function initScenarioPlanner() {
                 });
                 const simComparison = await res.json();
                 renderSimulationComparison(simComparison);
-                showToast("Simulation shock applied successfully", "info");
+                showToast("Re-calculated optimal strategies under injected disruption shock", "info");
             } catch (err) {
                 showToast("Simulation error: " + err.message, "error");
             }
@@ -1073,35 +1157,67 @@ function initScenarioPlanner() {
     }
 }
 
-function renderPresets() {
-    const container = document.getElementById("presetButtons");
-    if (!container || !AppState.data) return;
-    container.innerHTML = "";
+// Live Judge Stock & Scenario Tweaker Controller
+function initStockTweaker() {
+    const whSel = document.getElementById("tweakWhSelect");
+    const skuSel = document.getElementById("tweakSkuSelect");
+    const onHandInput = document.getElementById("tweakOnHandInput");
+    const resInput = document.getElementById("tweakReservedInput");
+    const btnApply = document.getElementById("btnApplyStockTweak");
+    const btnReset = document.getElementById("btnResetStockDefaults");
 
-    const presets = AppState.data.presets || [];
-    presets.forEach(p => {
-        const card = document.createElement("div");
-        card.className = "preset-btn-card";
-        card.innerHTML = `
-            <h4><i class="fa-solid fa-bolt"></i> ${p.title}</h4>
-            <p>${p.description}</p>
-        `;
-        card.onclick = async () => {
+    function syncInputs() {
+        if (!AppState.data || !AppState.data.products || !whSel || !skuSel || !onHandInput || !resInput) return;
+        const whId = whSel.value;
+        const skuId = skuSel.value;
+        const prod = AppState.data.products.find(p => p.wh_id === whId && p.sku_id === skuId);
+        if (prod) {
+            onHandInput.value = prod.on_hand;
+            resInput.value = prod.reserved;
+        }
+    }
+
+    if (whSel && skuSel) {
+        whSel.addEventListener("change", syncInputs);
+        skuSel.addEventListener("change", syncInputs);
+    }
+
+    if (btnApply) {
+        btnApply.addEventListener("click", async () => {
+            const whId = whSel.value;
+            const skuId = skuSel.value;
+            const onHand = parseInt(onHandInput.value, 10) || 0;
+            const res = parseInt(resInput.value, 10) || 0;
+
             try {
-                const res = await fetch("/api/scenario/preset", {
+                const response = await fetch("/api/inventory/update_stock", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ preset_id: p.id })
+                    body: JSON.stringify({ warehouse_id: whId, sku_id: skuId, on_hand: onHand, reserved: res })
                 });
-                const simComparison = await res.json();
-                renderSimulationComparison(simComparison);
-                showToast(`Applied preset: ${p.title}`, "info");
+                const result = await response.json();
+                if (result.success) {
+                    showToast(result.message, "success");
+                    await fetchAppState();
+                }
             } catch (err) {
-                showToast("Preset error: " + err.message, "error");
+                showToast("Failed to update inventory: " + err.message, "error");
             }
-        };
-        container.appendChild(card);
-    });
+        });
+    }
+
+    if (btnReset) {
+        btnReset.addEventListener("click", async () => {
+            try {
+                await fetch("/api/scenario/reset", { method: "POST" });
+                await fetchAppState();
+                syncInputs();
+                showToast("Reset all inventory and parameters to original baseline", "success");
+            } catch (err) {
+                showToast("Failed to reset: " + err.message, "error");
+            }
+        });
+    }
 }
 
 function renderSimulationComparison(simData) {

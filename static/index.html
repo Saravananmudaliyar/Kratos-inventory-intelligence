@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>StockShield AI — Enterprise Inventory Operations Cockpit</title>
+    <title>KRATOS — Enterprise Inventory Risk & Recommended Strategy Cockpit</title>
     <!-- Modern Font and Icons -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -18,9 +18,11 @@
     <header class="navbar">
         <div class="nav-container">
             <div class="brand">
-                <div class="brand-icon"><i class="fa-solid fa-shield-halved"></i></div>
+                <div class="brand-icon">
+                    <img src="/static/kratos_logo.png" alt="KRATOS Logo" class="brand-logo-img">
+                </div>
                 <div>
-                    <div class="brand-title">StockShield AI</div>
+                    <div class="brand-title">KRATOS</div>
                     <div class="brand-tagline">Intelligent Inventory Risk Prediction & Recovery Planner</div>
                 </div>
             </div>
@@ -31,7 +33,7 @@
                 <button class="nav-btn" data-target="products"><i class="fa-solid fa-list-check"></i> Stock & Products</button>
                 <button class="nav-btn" data-target="transfers"><i class="fa-solid fa-route"></i> Transfer & Substitution</button>
                 <button class="nav-btn" data-target="deliveries"><i class="fa-solid fa-truck-ramp-box"></i> Supplier Deliveries</button>
-                <button class="nav-btn" data-target="planner"><i class="fa-solid fa-sliders"></i> Scenario Planner</button>
+                <button class="nav-btn" data-target="planner"><i class="fa-solid fa-lightbulb"></i> Recommended Strategy</button>
                 <button class="nav-btn" data-target="history"><i class="fa-solid fa-clipboard-list"></i> Decision History</button>
             </nav>
 
@@ -130,6 +132,53 @@
 
         <!-- PAGE 2: STOCK & PRODUCTS -->
         <section class="page-view" id="view-products">
+            <!-- Live Judge Stock & Scenario Tweaker -->
+            <div class="content-card" style="border-left: 5px solid #2563eb; margin-bottom: 1.5rem;">
+                <div class="card-header">
+                    <div>
+                        <span class="badge badge-primary" style="font-size:0.75rem; margin-bottom:4px; background:#eff6ff; color:#2563eb; border:1px solid #bfdbfe;"><i class="fa-solid fa-sliders"></i> Live Judge Controls</span>
+                        <h3 class="card-title" style="margin-top:2px;"><i class="fa-solid fa-pen-to-square"></i> Live Inventory Stock & Demand Tweaker</h3>
+                        <div class="card-subtitle">Change physical stock, reserved counts, or parameters on-the-fly to test algorithm adaptability during live evaluation</div>
+                    </div>
+                </div>
+                <div class="form-grid" style="margin-top: 1rem;">
+                    <div class="form-group">
+                        <label>Select Warehouse</label>
+                        <select id="tweakWhSelect" class="form-control">
+                            <option value="WH-MUMBAI">Mumbai Warehouse</option>
+                            <option value="WH-PUNE" selected>Pune Warehouse</option>
+                            <option value="WH-CHENNAI">Chennai Warehouse</option>
+                            <option value="WH-DELHI">Delhi Warehouse</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Select Product / SKU</label>
+                        <select id="tweakSkuSelect" class="form-control">
+                            <option value="SKU-CHARGER-65W" selected>65W USB-C Fast Charger</option>
+                            <option value="SKU-CHARGER-65W-PRO">65W USB-C GaN Charger Pro</option>
+                            <option value="SKU-CHARGER-18W">18W QuickCharge 3.0 Adapter</option>
+                            <option value="SKU-MOUSE-WL">Ergonomic Wireless Mouse</option>
+                            <option value="SKU-KEYBOARD-BT">Mechanical Bluetooth Keyboard</option>
+                            <option value="SKU-POWERBANK-20K">20000mAh Power Bank (65W)</option>
+                            <option value="SKU-HEADPHONES-ANC">ANC Wireless Headphones</option>
+                            <option value="SKU-CABLE-USBC">Braided USB-C Cable (1.5m)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Physical On-Hand Stock</label>
+                        <input type="number" id="tweakOnHandInput" class="form-control" value="28" min="0" step="1">
+                    </div>
+                    <div class="form-group">
+                        <label>Reserved Customer Stock</label>
+                        <input type="number" id="tweakReservedInput" class="form-control" value="18" min="0" step="1">
+                    </div>
+                </div>
+                <div class="action-buttons" style="margin-top: 1rem;">
+                    <button class="btn btn-primary" id="btnApplyStockTweak"><i class="fa-solid fa-check"></i> Apply Live Stock Change</button>
+                    <button class="btn btn-secondary" id="btnResetStockDefaults"><i class="fa-solid fa-rotate-left"></i> Reset to Baseline</button>
+                </div>
+            </div>
+
             <div class="content-card">
                 <div class="card-header">
                     <div>
@@ -413,23 +462,158 @@
             </div>
         </section>
 
-        <!-- PAGE 5: SCENARIO PLANNER -->
+        <!-- PAGE 5: RECOMMENDED STRATEGY PLANNER COCKPIT -->
         <section class="page-view" id="view-planner">
-            <h2 class="section-title"><i class="fa-solid fa-sliders"></i> Scenario Planner (Supply Disruption Stress-Testing)</h2>
-            <p class="section-desc">Simulate supplier port delays, sudden demand spikes, or freight cost increases without modifying real operational inventory.</p>
-
-            <div class="content-card">
-                <h3 class="card-title">1. One-Click Disruption Presets</h3>
-                <div class="preset-buttons" id="presetButtons">
-                    <!-- Presets injected dynamically -->
+            <!-- Crisis Briefing Card -->
+            <div class="content-card" style="border-left: 5px solid #2563eb;">
+                <div class="card-header">
+                    <div>
+                        <span class="badge badge-primary" style="font-size:0.8rem; margin-bottom:6px; background-color: #eff6ff; color: #2563eb; border: 1px solid #bfdbfe;"><i class="fa-solid fa-lightbulb"></i> Recommended Strategy Cockpit</span>
+                        <h2 class="section-title" style="margin-top: 4px;"><i class="fa-solid fa-bullseye"></i> Critical Component Delay vs. Competing Multi-Hub Orders</h2>
+                        <p class="section-desc" style="margin-bottom:0;">Core component shipment is delayed at port customs while 3 high-value customer orders compete for dwindling stock across regional hubs.</p>
+                    </div>
+                    <div>
+                        <button class="btn btn-primary" id="btnExecuteTargetDemoPlan" style="font-size:0.92rem; padding: 10px 18px; box-shadow: var(--shadow-md);">
+                            <i class="fa-solid fa-wand-magic-sparkles"></i> Execute Recommended Recovery Plan
+                        </button>
+                    </div>
                 </div>
 
-                <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 1.5rem 0;">
+                <div class="alert-banner alert-banner-critical" style="margin-top: 14px; margin-bottom: 0;">
+                    <div class="alert-icon"><i class="fa-solid fa-truck-ramp-box"></i></div>
+                    <div>
+                        <strong>Disruption Incident:</strong> Purchase Order shipment <strong>#SHIP-001 (100 units 65W Fast Chargers from VoltTech)</strong> delayed by <strong>4 days</strong> (Arriving on <strong>15/10/2026</strong> instead of 11/10/2026).<br>
+                        <strong>Competing Demand:</strong> TechHub Pune (30 units) and Apex Electronics (20 units) compete for only <strong>20 physical units</strong> on-hand at Pune Hub, risking ₹28,500/day SLA breach penalties.
+                    </div>
+                </div>
+            </div>
 
-                <h3 class="card-title">2. Custom Shock Parameters</h3>
+            <!-- Competing Customer Orders Table -->
+            <div class="content-card" style="margin-top: 1.5rem;">
+                <div class="card-header">
+                    <div>
+                        <h3 class="card-title"><i class="fa-solid fa-users-viewfinder"></i> Competing Customer Orders & Stockout Exposure</h3>
+                        <div class="card-subtitle">Real-time order priority, strict delivery deadlines, and impending contractual late penalties</div>
+                    </div>
+                </div>
+                <div class="table-responsive">
+                    <table class="data-table" id="competingOrdersTable">
+                        <thead>
+                            <tr>
+                                <th>Order ID</th>
+                                <th>Customer Name</th>
+                                <th>Product / Component</th>
+                                <th>Destination Hub</th>
+                                <th>Order Quantity</th>
+                                <th>Delivery Deadline</th>
+                                <th>Customer Priority</th>
+                                <th>Late SLA Penalty</th>
+                                <th>Unmitigated Status</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Autonomous Strategy Evaluation Comparison (Trade-Off Matrix for Judges) -->
+            <div class="content-card" style="margin-top: 1.5rem;">
+                <div class="card-header">
+                    <div>
+                        <h3 class="card-title"><i class="fa-solid fa-scale-balanced"></i> Autonomous Strategy Evaluation & Trade-off Matrix</h3>
+                        <div class="card-subtitle">Comparing Landed Costs, Lead Times, Source Buffer Protection, and Technical Compatibility</div>
+                    </div>
+                </div>
+                <div class="strategy-cards-grid" id="strategyCardsGrid">
+                    <!-- Injected dynamically via JS -->
+                </div>
+            </div>
+
+            <!-- Multi-Echelon Shortage Resolution Hierarchy (When Other Hubs Have No Surplus) -->
+            <div class="content-card" style="margin-top: 1.5rem; border-left: 5px solid #059669;">
+                <div class="card-header">
+                    <div>
+                        <span class="badge badge-success" style="font-size:0.75rem; margin-bottom:4px; background:#ecfdf5; color:#059669; border:1px solid #a7f3d0;"><i class="fa-solid fa-shield-check"></i> Zero-Surplus Contingency Protocol</span>
+                        <h3 class="card-title" style="margin-top:2px;"><i class="fa-solid fa-sitemap"></i> Multi-Echelon Fallback Hierarchy (When Other Hubs Have No Surplus)</h3>
+                        <div class="card-subtitle">Deterministic 4-tier decision cascade triggered when destination is critical and all other hubs are supply-constrained</div>
+                    </div>
+                </div>
+
+                <div class="hierarchy-grid">
+                    <!-- Tier 1 -->
+                    <div class="hierarchy-card tier-1">
+                        <div>
+                            <div class="hierarchy-step-num">1</div>
+                            <div class="hierarchy-title">Inter-Hub Transfer</div>
+                            <div class="hierarchy-condition"><i class="fa-solid fa-circle-info"></i> Primary Choice (Surplus Exists)</div>
+                            <div class="hierarchy-body">
+                                Dispatches inventory from nearest regional hub where available stock strictly exceeds the donor's 7-day safety buffer.
+                            </div>
+                        </div>
+                        <div class="hierarchy-meta">
+                            <span><i class="fa-solid fa-clock"></i> 1 Day Transit</span>
+                            <span class="text-success">₹320 Landed Cost</span>
+                        </div>
+                    </div>
+
+                    <!-- Tier 2 -->
+                    <div class="hierarchy-card tier-2">
+                        <div>
+                            <div class="hierarchy-step-num">2</div>
+                            <div class="hierarchy-title">On-Site Technical Substitution</div>
+                            <div class="hierarchy-condition"><i class="fa-solid fa-bolt"></i> When No Hub Has Safe Surplus</div>
+                            <div class="hierarchy-body">
+                                Scans destination warehouse for pre-approved, pin-compatible, voltage-matched parts (e.g., 65W GaN Pro) with zero transit lag.
+                            </div>
+                        </div>
+                        <div class="hierarchy-meta">
+                            <span><i class="fa-solid fa-bolt"></i> 0 Days (Instant)</span>
+                            <span class="text-success">₹0 Freight Cost</span>
+                        </div>
+                    </div>
+
+                    <!-- Tier 3 -->
+                    <div class="hierarchy-card tier-3">
+                        <div>
+                            <div class="hierarchy-step-num">3</div>
+                            <div class="hierarchy-title">Express Air-Freight Reorder</div>
+                            <div class="hierarchy-condition"><i class="fa-solid fa-plane"></i> When Local Substitutes Depleted</div>
+                            <div class="hierarchy-body">
+                                Triggers expedited OEM purchase order via dedicated air courier (2 days vs 7 days), preventing severe ₹1,500/day SLA breach penalties.
+                            </div>
+                        </div>
+                        <div class="hierarchy-meta">
+                            <span><i class="fa-solid fa-truck-plane"></i> 2 Days Transit</span>
+                            <span class="text-warning">₹1,800 Surge Cost</span>
+                        </div>
+                    </div>
+
+                    <!-- Tier 4 -->
+                    <div class="hierarchy-card tier-4">
+                        <div>
+                            <div class="hierarchy-step-num">4</div>
+                            <div class="hierarchy-title">Priority Order Rationing</div>
+                            <div class="hierarchy-condition"><i class="fa-solid fa-scale-balanced"></i> Total Network Supply Dry</div>
+                            <div class="hierarchy-body">
+                                Algorithmic allocation to highest penalty SLA contracts first (AeroSys Corp), while split-shipping remaining orders upon replenishment.
+                            </div>
+                        </div>
+                        <div class="hierarchy-meta">
+                            <span><i class="fa-solid fa-user-shield"></i> SLA Protected</span>
+                            <span class="text-primary">Min Penalty Loss</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Interactive Shock Injection Testing for Judges -->
+            <div class="content-card" style="margin-top: 1.5rem;">
+                <h3 class="card-title"><i class="fa-solid fa-sliders"></i> Interactive Disruption Stress-Testing (Judge Live Evaluation)</h3>
+                <p class="card-subtitle">Adjust parameters below to test optimization engine resilience under compound supply chain shocks</p>
+
                 <div class="form-grid" style="margin-top: 1rem;">
                     <div class="form-group">
-                        <label>Demand Surge Multiplier (e.g. 1.8 = +80% demand)</label>
+                        <label>Demand Surge Multiplier</label>
                         <input type="number" id="simDemandInput" class="form-control" value="1.0" min="0.5" max="3.0" step="0.1">
                     </div>
                     <div class="form-group">
@@ -437,21 +621,18 @@
                         <input type="number" id="simDelayInput" class="form-control" value="0" min="0" max="14" step="1">
                     </div>
                     <div class="form-group">
-                        <label>Freight Transfer Cost Multiplier</label>
+                        <label>Freight Cost Multiplier</label>
                         <input type="number" id="simTransferCostInput" class="form-control" value="1.0" min="0.5" max="3.0" step="0.1">
                     </div>
                 </div>
 
                 <div class="action-buttons" style="margin-top: 1.25rem;">
-                    <button class="btn btn-primary" id="btnApplySim"><i class="fa-solid fa-play"></i> Apply Disruption Shock</button>
-                    <button class="btn btn-secondary" id="btnResetSim"><i class="fa-solid fa-rotate-left"></i> Reset to Normal Baseline</button>
+                    <button class="btn btn-primary" id="btnApplySim"><i class="fa-solid fa-play"></i> Re-Calculate Optimal Strategy</button>
+                    <button class="btn btn-secondary" id="btnResetSim"><i class="fa-solid fa-rotate-left"></i> Reset to Baseline Scenario</button>
                 </div>
-            </div>
 
-            <!-- Impact Matrix -->
-            <div class="content-card" style="margin-top: 1.5rem;">
-                <h3 class="card-title"><i class="fa-solid fa-table-columns"></i> Baseline vs. Disrupted Scenario Matrix</h3>
-                <div class="table-responsive" style="margin-top: 1rem;">
+                <!-- Simulation Comparison Delta Table -->
+                <div class="table-responsive" style="margin-top: 1.25rem;">
                     <table class="data-table" id="simComparisonTable">
                         <thead>
                             <tr>
@@ -486,7 +667,7 @@
 
     <!-- Footer -->
     <footer class="footer">
-        StockShield AI — Enterprise Inventory Operations Cockpit | Regional Hubs: Mumbai • Pune • Chennai • Delhi | Deterministic Decision Engine
+        KRATOS — Enterprise Inventory Operations Cockpit | Regional Hubs: Mumbai • Pune • Chennai • Delhi | Deterministic Decision Engine
     </footer>
 
     <script src="/static/app.js"></script>

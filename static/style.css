@@ -103,23 +103,31 @@ body {
 }
 
 .brand-icon {
-    width: 40px;
-    height: 40px;
-    background: linear-gradient(135deg, #1e40af, #3b82f6);
-    color: #ffffff;
-    border-radius: var(--radius-md);
+    width: 44px;
+    height: 44px;
+    background: transparent;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 1.25rem;
-    box-shadow: 0 2px 4px rgba(37, 99, 235, 0.2);
+    overflow: hidden;
+}
+
+.brand-logo-img {
+    width: 44px;
+    height: 44px;
+    object-fit: contain;
+    border-radius: var(--radius-sm);
+    box-shadow: 0 2px 5px rgba(0,0,0,0.12);
 }
 
 .brand-title {
     font-weight: 800;
-    font-size: 1.15rem;
-    letter-spacing: -0.02em;
+    font-size: 1.25rem;
+    letter-spacing: 0.05em;
     color: #0f172a;
+    display: flex;
+    align-items: center;
+    gap: 6px;
 }
 
 .brand-tagline {
@@ -983,5 +991,169 @@ body {
     color: var(--text-muted);
     line-height: 1.4;
 }
+
+/* Target Demo Strategy Comparison Cards */
+.strategy-cards-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+    margin-top: 12px;
+}
+
+@media (max-width: 900px) {
+    .strategy-cards-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.strategy-card {
+    background: #ffffff;
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    transition: all 0.2s ease;
+}
+
+.strategy-card.recommended {
+    border-color: #059669;
+    box-shadow: 0 0 0 2px rgba(5, 150, 105, 0.15), var(--shadow-sm);
+    background: #f0fdf4;
+}
+
+.strategy-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 10px;
+    gap: 10px;
+}
+
+.strategy-title {
+    font-size: 0.95rem;
+    font-weight: 750;
+    color: var(--text-main);
+}
+
+.strategy-category {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    font-weight: 600;
+}
+
+.strategy-metric-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+    font-size: 0.8rem;
+    background: #ffffff;
+    padding: 10px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-subtle);
+    margin: 10px 0;
+}
+
+.strategy-details {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    line-height: 1.45;
+}
+
+/* Multi-Echelon Fallback Hierarchy */
+.hierarchy-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 14px;
+    margin-top: 14px;
+}
+
+@media (max-width: 1024px) {
+    .hierarchy-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 640px) {
+    .hierarchy-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.hierarchy-card {
+    background: #ffffff;
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    padding: 16px;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    transition: all 0.2s ease;
+}
+
+.hierarchy-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+.hierarchy-card.tier-1 { border-top: 4px solid #2563eb; }
+.hierarchy-card.tier-2 { border-top: 4px solid #059669; }
+.hierarchy-card.tier-3 { border-top: 4px solid #d97706; }
+.hierarchy-card.tier-4 { border-top: 4px solid #7c3aed; }
+
+.hierarchy-step-num {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    font-size: 0.75rem;
+    font-weight: 800;
+    margin-bottom: 8px;
+}
+
+.tier-1 .hierarchy-step-num { background: #eff6ff; color: #2563eb; }
+.tier-2 .hierarchy-step-num { background: #ecfdf5; color: #059669; }
+.tier-3 .hierarchy-step-num { background: #fffbeb; color: #d97706; }
+.tier-4 .hierarchy-step-num { background: #f5f3ff; color: #7c3aed; }
+
+.hierarchy-title {
+    font-size: 0.92rem;
+    font-weight: 750;
+    color: var(--text-main);
+    margin-bottom: 4px;
+}
+
+.hierarchy-condition {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.hierarchy-body {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    line-height: 1.45;
+    margin-bottom: 12px;
+}
+
+.hierarchy-meta {
+    background: var(--bg-subtle);
+    padding: 8px 10px;
+    border-radius: var(--radius-sm);
+    font-size: 0.72rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-weight: 600;
+}
+
 
 
